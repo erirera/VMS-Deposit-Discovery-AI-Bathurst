@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposal 1: VMS Discovery AI</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation & Info -->
+        <aside class="sidebar glass">
+            <header class="sidebar-header">
+                <div class="header-tag">Research Proposal 1</div>
+                <h1>VMS Deposit Discovery AI</h1>
+                <p class="subtitle">Machine Learning Prospectivity Mapping in the Bathurst Mining Camp</p>
+                <div class="novelty-badge">
+                    <span class="icon">✨</span> High Novelty Verified
+                </div>
+            </header>
+
+            <div class="sidebar-content">
+                <section class="info-section">
+                    <h2>Overview</h2>
+                    <p>Building a multi-source prospectivity classifier using NRCan geophysical data and NB till geochemistry to identify underexplored Volcanogenic Massive Sulphide (VMS) deposits.</p>
+                </section>
+
+                <section class="info-section">
+                    <h2>Key Objectives</h2>
+                    <ul class="objective-list">
+                        <li><span>Train RF/XGBoost on known VMS sites</span></li>
+                        <li><span>Generate a province-wide high-priority drill target map</span></li>
+                        <li><span>Apply SHAP explainability for feature importance</span></li>
+                    </ul>
+                </section>
+
+                <section class="control-section">
+                    <h2>Map Controls</h2>
+                    <p class="control-desc">Toggle AI input features and prediction outputs.</p>
+                    
+                    <div class="layer-controls">
+                        <label class="toggle-control">
+                            <input type="checkbox" id="layer-bmc" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">BMC Boundary</span>
+                        </label>
+                        
+                        <label class="toggle-control">
+                            <input type="checkbox" id="layer-deposits" checked>
+                            <span class="toggle-slider deposit-color"></span>
+                            <span class="toggle-label">Known VMS Deposits (Positive)</span>
+                        </label>
+
+                        <label class="toggle-control">
+                            <input type="checkbox" id="layer-barren" checked>
+                            <span class="toggle-slider barren-color"></span>
+                            <span class="toggle-label">Barren Drill Holes (Negative)</span>
+                        </label>
+
+                        <div class="divider"></div>
+                        <h3 class="subsection-title">AI Outputs</h3>
+
+                        <label class="toggle-control">
+                            <input type="checkbox" id="layer-heatmap">
+                            <span class="toggle-slider heat-color"></span>
+                            <span class="toggle-label">AI Prospectivity Heatmap</span>
+                        </label>
+                    </div>
+                </section>
+                
+                <section class="stats-card glass-panel">
+                    <div class="stat-row">
+                        <span class="stat-label">Total BMC Area:</span>
+                        <span class="stat-value">~3,800 km²</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Known VMS:</span>
+                        <span class="stat-value">45</span>
+                    </div>
+                    <div class="stat-row highlight">
+                        <span class="stat-label">AI Target Zones:</span>
+                        <span class="stat-value" id="target-count">--</span>
+                    </div>
+                </section>
+            </div>
+            
+            <footer class="sidebar-footer">
+                <p>Data Sources: NRCan, NB GSB</p>
+            </footer>
+        </aside>
+
+        <!-- Main Map Area -->
+        <main class="map-area">
+            <div id="map"></div>
+            <!-- Overlay UI -->
+            <div class="map-overlay bottom-right glass">
+                <h4>Legend</h4>
+                <div class="legend-item"><span class="legend-color deposit"></span> VMS Deposit</div>
+                <div class="legend-item"><span class="legend-color barren"></span> Barren Hole</div>
+                <div class="legend-item heat-gradient-wrap">
+                    <span>Low Probability</span>
+                    <div class="heat-gradient"></div>
+                    <span>High Probability</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <!-- Custom JS -->
+    <script src="main.js"></script>
+</body>
+</html>
