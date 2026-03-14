@@ -127,5 +127,10 @@ CC(LICENSE)
 Research data references: open government data, subject to respective source licences.
 
 ---
+## 🤖 Acknowledgements
+
+This project was built with the assistance of the **Antigravity Agent**, an advanced AI coding assistant developed by Google DeepMind.
+
+---
 
 *Prepared March 2026 · New Brunswick Geoscience AI Research · Solo Researcher Edition*
