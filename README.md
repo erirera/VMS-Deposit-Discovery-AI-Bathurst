@@ -1,6 +1,6 @@
 # 🪨 VMS Deposit Discovery AI — Interactive Dashboard
 
-> **Research Proposal 1 · Solo Researcher Edition**  
+> **Research Proposal**  
 > Machine Learning Prospectivity Mapping in the Bathurst Mining Camp, New Brunswick, Canada
 
 ---
@@ -37,7 +37,7 @@ The proposal calls for integrating open geophysical and geochemical data from **
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/vms-discovery-dashboard.git
+git clone https://github.com/erirera/vms-discovery-dashboard.git
 cd vms-discovery-dashboard
 
 # Open the dashboard
@@ -123,7 +123,7 @@ Phase 3 (Months 9–10): Map Production & Validation
 
 ## License
 
-Code: [MIT](LICENSE)  
+CC(LICENSE)  
 Research data references: open government data, subject to respective source licences.
 
 ---
