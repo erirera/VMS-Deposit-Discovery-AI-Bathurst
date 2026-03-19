@@ -1,0 +1,19 @@
+Excited to share my latest interactive web dashboard visualising a novel AI research proposal: **VMS Deposit Discovery AI in the Bathurst Mining Camp (BMC)!** 🎯🗺️
+
+Despite being one of the world's most intensively studied Volcanogenic Massive Sulphide (VMS) districts, geologists estimate that ~70% of the BMC's potential deposit locations remain untested. 
+
+While the industry utilizes proprietary AI in this region, there currently exists **no peer-reviewed, open-science ML prospectivity paper** for the BMC that integrates the full NRCan airborne geophysical compilation with NB till geochemistry. That is the exact research gap this project aims to close. ✨
+
+To communicate this proposal, I've built a sleek, dark-themed interactive dashboard that maps out the ~3,800 km² camp, plotting 45 known VMS deposits against 250+ barren drill holes to visualize the class imbalance we face in mineral exploration. 
+
+The dashboard features a live toggle for a simulated **AI Prospectivity Heatmap** (predicting high-priority drill targets based on Random Forest / XGBoost classifiers) and layers for all open-access data sources utilized in this pipeline:
+🔹 Airborne Magnetics (NRCan)
+🔹 Airborne Radiometrics & EM (NRCan)
+🔹 Till Geochemistry (NB Geological Survey)
+🔹 Bouguer Gravity
+
+Check out the GitHub repository to interact with the dashboard directly and read the full research methodology outlining the 10-month open science pipeline from data prep to SHAP explainability! 
+
+🔗 [Link to GitHub Repository]
+
+#Geoscience #ArtificialIntelligence #MineralExploration #MachineLearning #OpenScience #DataVisualization #NewBrunswick #MiningIndustry #Geophysics #WebMaps
