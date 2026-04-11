@@ -129,7 +129,7 @@ Research data references: open government data, subject to respective source lic
 ---
 ## 🤖 Acknowledgements
 
-This project was built with the assistance of the **Antigravity Agent**, (Claude Sonnet 4.6) an advanced AI coding assistant developed by Google DeepMind.
+This was built with the assistance of the **Antigravity Agent**, (Claude Sonnet 4.6) an advanced AI coding assistant developed by Google DeepMind.
 
 ---
 
