@@ -121,7 +121,7 @@ matplotlib       # Visualisation
 
 ## Why This Matters
 
-KoBold Metals, Kennecott, and other data-driven exploration companies are demonstrating that integrating ML into prospectivity mapping can dramatically reduce the number of dry holes drilled. The BMC offers an ideal test case: abundant open data, well-characterised training labels (45 known deposits), and a district with strong evidence of remaining undiscovered resources.
+Geological surveys, KoBold Metals, Kennecott, and other data-driven exploration companies are demonstrating that integrating ML into prospectivity mapping can dramatically reduce the number of dry holes drilled. The BMC offers an ideal test case: abundant open data, well-characterised training labels (45 known deposits), and a district with strong evidence of remaining undiscovered resources.
 
 This project is designed to be fully reproducible, open-science, and publishable — contributing to the growing body of applied ML literature in mineral exploration.
 
@@ -129,9 +129,9 @@ This project is designed to be fully reproducible, open-science, and publishable
 
 ## Author
 
-**Dele Falebita, PhD** — Exploration Geoscientist & Data Scientist  
+**Dele Falebita, PhD** — GIT APEGNB & Data Scientist  
 [github.com/erirera](https://github.com/erirera) | Moncton, New Brunswick, Canada  
-19+ years experience in geo-resource exploration, geostatistics, and geophysical data analysis.
+20+ years experience in geo-resource exploration, geostatistics, and geophysical data analysis.
 
 ---
 
