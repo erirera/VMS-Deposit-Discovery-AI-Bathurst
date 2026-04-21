@@ -1,0 +1,122 @@
+# VMS Deposit Discovery AI — Phase 1: Python ML Pipeline
+
+## Background
+
+The interactive dashboard (proof-of-concept with simulated data) is complete and live at GitHub Pages. The roadmap's next active step is building the **real Python ML pipeline** — downloading open-access geoscience data, engineering features, training the classifier, and producing a genuine prospectivity map of the Bathurst Mining Camp.
+
+This plan covers **Phase 1: Data Preparation** and sets up the full project scaffold for subsequent phases.
+
+---
+
+## Proposed Changes
+
+### Python Project Scaffold
+
+#### [NEW] `pipeline/` — Core Python Package Directory
+
+A clean, reproducible directory structure mirrors the research methodology:
+
+```
+pipeline/
+├── 00_environment/
+│   └── requirements.txt          # All Python dependencies pinned
+├── 01_data_download/
+│   ├── download_nrcan_mag.py     # Airborne magnetics (NRCan WCS/FTP)
+│   ├── download_nrcan_rad.py     # Radiometrics (K%, Th, U)
+│   ├── download_nb_geochemistry.py  # Till geochemistry (NB GSB)
+│   └── download_vms_labels.py    # Known deposit + barren hole locations
+├── 02_preprocessing/
+│   ├── reproject_grids.py        # → EPSG:2953 @ 100m resolution
+│   ├── extract_features.py       # Sample rasters at point locations
+│   └── engineer_features.py     # TMI gradient, analytic signal, K/Th ratio
+├── 03_training/
+│   ├── build_dataset.py          # Assemble feature matrix + labels
+│   ├── train_rf.py               # Random Forest with spatial CV
+│   ├── train_xgb.py              # XGBoost with spatial CV
+│   └── evaluate_models.py        # Metrics, ROC-AUC, confusion matrix
+├── 04_prospectivity_map/
+│   ├── predict_full_extent.py    # Run model over 3,800 km² grid
+│   └── export_map.py             # GeoTIFF + PNG export
+├── 05_explainability/
+│   └── shap_analysis.py          # SHAP TreeExplainer maps
+└── notebooks/
+    ├── 01_EDA.ipynb              # Exploratory data analysis
+    ├── 02_Feature_Engineering.ipynb
+    └── 03_Model_Results.ipynb
+```
+
+---
+
+### Phase 1 Implementation — What Gets Built Now
+
+#### [NEW] `pipeline/00_environment/requirements.txt`
+All dependencies with pinned versions for reproducibility.
+
+#### [NEW] `pipeline/01_data_download/download_nb_geochemistry.py`
+Downloads and saves NB GSB till geochemistry data (Zn, Pb, Cu, Ag, Au, As). This is the most structured open dataset and is the entry point for building the training labels.
+
+#### [NEW] `pipeline/01_data_download/download_vms_labels.py`
+Wrangles known VMS deposit coordinates from the NB Metallic Minerals Database and barren hole locations into a clean GeoDataFrame (GeoPackage output).
+
+#### [NEW] `pipeline/02_preprocessing/reproject_grids.py`
+Handles raster reprojection and resampling to the target CRS (EPSG:2953, NB Double Stereographic) at 100m resolution using `rasterio`.
+
+#### [NEW] `pipeline/02_preprocessing/extract_features.py`
+Samples all geophysical raster grids at till sample point locations using `rasterio` point extraction. Outputs a feature matrix as a parquet file.
+
+#### [NEW] `pipeline/02_preprocessing/engineer_features.py`
+Computes derived features:
+- TMI horizontal gradient magnitude (from-dx/dy)
+- Analytic signal amplitude
+- K/Th radiometric ratio
+- EM channel ratios
+
+#### [NEW] `pipeline/03_training/build_dataset.py`
+Merges features + labels, handles class imbalance with SMOTE, and performs the spatial train/test split using block cross-validation.
+
+#### [NEW] `pipeline/03_training/train_rf.py`
+Random Forest classifier with:
+- 5-fold **spatial** cross-validation (sklearn-compatible custom splitter)
+- Bayesian hyperparameter tuning via Optuna
+- Saves the best model as a `.joblib` artifact
+
+#### [NEW] `pipeline/notebooks/01_EDA.ipynb`
+Jupyter notebook for interactive EDA of the downloaded geochemistry data, including spatial plots, correlation matrices, and class balance inspection.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Data Access Clarification Needed**
+> Some NRCan airborne survey grids are distributed as compressed binary files (`.ers`, `.grd`, Geosoft format). Do you have **Oasis Montaj** or **Target for ArcGIS** licenses, or should the pipeline use only formats accessible via open Python tools (GeoTIFF, NetCDF, ASCII grid)?
+
+> [!IMPORTANT]
+> **Working Directory**
+> The pipeline scripts will be created inside the existing repo at:
+> `c:\Users\delef\.gemini\antigravity\bathurst VMS\VMS-Deposit-Discovery-AI-Bathurst\pipeline\`
+> Is this correct, or do you want the Python pipeline in a separate directory/repo?
+
+> [!NOTE]
+> **First run focus**: Phase 1 will focus on the **NB Till Geochemistry** data (directly downloadable as CSV/shapefile) and the **VMS deposit label compilation**. This gives us a working feature matrix to train on immediately without waiting for raster downloads. Raster geophysical data (magnetics, radiometrics, EM) will be added in Phase 2.
+
+---
+
+## Open Questions
+
+> [!WARNING]
+> **NRCan Raster Availability**: A portion of the NRCan airborne grids require manual download from the Geoscience Data Repository (account creation may be needed). Do you want the pipeline to flag these as "missing" and proceed with available data, or shall I include instructions for manual download steps?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- `python pipeline/01_data_download/download_nb_geochemistry.py` — should download and save `data/raw/nb_till_geochemistry.gpkg`
+- `python pipeline/02_preprocessing/extract_features.py` — should output `data/processed/feature_matrix.parquet`
+- `python pipeline/03_training/train_rf.py` — should print cross-validated ROC-AUC
+
+### Manual Verification
+- Inspect point locations on map to confirm spatial accuracy (CRS check)
+- Check feature matrix shape and null counts
+- Review SHAP summary plots for geological plausibility

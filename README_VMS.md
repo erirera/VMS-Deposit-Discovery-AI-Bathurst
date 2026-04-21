@@ -22,6 +22,7 @@ This project proposes and designs a rigorous, open-science machine learning work
 |---|---|
 | `index.html` + `main.js` + `style.css` | Interactive proof-of-concept dashboard visualising the proposed model architecture, training label locations (45 known VMS deposits + 250+ barren drill holes), and a simulated prospectivity heatmap |
 | `README.md` | Full research design, methodology, data sources, and implementation roadmap |
+| `pipeline/` | Full Python ML pipeline: data download, preprocessing, feature engineering, model training (RF + XGBoost), spatial cross-validation, SHAP explainability, and prospectivity map export |
 
 The **dashboard is a research communication tool**, not a trained model output. It visualises the proposed spatial framework — deposit locations, camp boundary, and simulated heatmap — to communicate the study design and solicit feedback. Live at: [erirera.github.io/VMS-Deposit-Discovery-AI-Bathurst](https://erirera.github.io/VMS-Deposit-Discovery-AI-Bathurst/)
 
@@ -110,11 +111,12 @@ matplotlib       # Visualisation
 - [x] Research design completed
 - [x] Interactive dashboard (proof-of-concept visualisation)
 - [x] Data sources identified and access confirmed
-- [ ] Data download and preprocessing pipeline (in progress)
-- [ ] Feature engineering notebook
-- [ ] Model training and spatial cross-validation
+- [x] Python pipeline scaffold (`pipeline/` directory — all scripts written)
+- [ ] Data download: run `pipeline/01_data_download/` scripts to fetch real data
+- [ ] Preprocessing: reproject rasters, extract features, engineer derived bands
+- [ ] Model training: Random Forest + XGBoost with 5-fold spatial cross-validation
 - [ ] SHAP explainability maps
-- [ ] Full prospectivity map production
+- [ ] Full prospectivity map production (GeoTIFF)
 - [ ] Manuscript preparation
 
 ---
