@@ -30,6 +30,10 @@ from pathlib import Path
 import requests
 from tqdm import tqdm
 
+# Ensure UTF-8 output on Windows terminals
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import RASTERS_DIR

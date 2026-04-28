@@ -205,7 +205,8 @@ def main():
     vms_gdf = build_vms_geodataframe()
 
     # Add a buffered geometry column for spatial label assignment
-    vms_gdf["buffer_geom"] = vms_gdf.geometry.buffer(POSITIVE_BUFFER_M)
+    # Stored as WKT so to_file() works with a single active geometry column
+    vms_gdf["buffer_geom_wkt"] = vms_gdf.geometry.buffer(POSITIVE_BUFFER_M).to_wkt()
 
     vms_gdf.to_file(VMS_LABELS_GPKG, driver="GPKG", layer="vms_deposits")
     log.info(f"  ✅ Saved → {VMS_LABELS_GPKG}")
@@ -213,7 +214,7 @@ def main():
     # ── Negative labels ──────────────────────────────────────────────────────
     log.info("\nBuilding negative labels (barren drill holes) ...")
     barren_gdf = build_barren_geodataframe()
-    barren_gdf["buffer_geom"] = barren_gdf.geometry.buffer(POSITIVE_BUFFER_M)
+    barren_gdf["buffer_geom_wkt"] = barren_gdf.geometry.buffer(POSITIVE_BUFFER_M).to_wkt()
 
     barren_gdf.to_file(BARREN_LABELS_GPKG, driver="GPKG", layer="barren_holes")
     log.info(f"  ✅ Saved → {BARREN_LABELS_GPKG}")

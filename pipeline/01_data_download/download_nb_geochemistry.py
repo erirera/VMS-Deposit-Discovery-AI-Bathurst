@@ -1,16 +1,22 @@
 """
 download_nb_geochemistry.py
 ───────────────────────────
-Downloads NB Geological Survey till geochemistry data and saves it as a
-GeoPackage for use in the VMS prospectivity model.
+Downloads NB mineral occurrence and drill-hole point data from the live
+GeoNB ArcGIS REST service and saves them as GeoPackages for use in the
+VMS prospectivity model.
 
-Data source:
-  NB Open Data — Surficial Geochemistry (Till) Program
-  https://www2.gnb.ca/content/gnb/en/departments/erd/energy/content/minerals/content/geology_data.html
+Live endpoint confirmed 2026-04-28:
+  https://geonb.snb.ca/arcgis/rest/services/GeoNB_DNR_MineralOccurrences/MapServer
+    Layer 0 — Mineral occurrences (point features, EPSG:2953)
+    Layer 1 — Drill Holes      (point features, EPSG:2953)
 
-The till geochemistry dataset records heavy mineral and multi-element
-(ICP-MS) analyses of glacial till samples across New Brunswick.
-Key pathfinder elements for VMS prospecting: Zn, Pb, Cu, Ag, Au, As.
+NOTE on till geochemistry (ICP-MS):
+  The NB GSB till geochemistry surveys are distributed as individual Open File
+  data files via the 1:250,000 index search at:
+    https://www1.gnb.ca/0078/GeoscienceDatabase/Till_GeoChem/TillIndex-e.asp
+  These are per-quadrangle downloads and require the DATA_ACQUISITION_GUIDE.md
+  manual steps.  The mineral occurrence and drill-hole layers fetched here provide
+  the spatial label data needed for Phase 1 training.
 
 Usage:
     python pipeline/01_data_download/download_nb_geochemistry.py
@@ -18,7 +24,9 @@ Usage:
 
 import sys
 import logging
+import math
 from pathlib import Path
+
 import requests
 import pandas as pd
 import geopandas as gpd
@@ -40,176 +48,157 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── NB Open Data — Till Geochemistry ─────────────────────────────────────────
-# The NB Geological Survey provides till geochemistry as a CSV download via
-# their Open Data portal. The URL below fetches the current published dataset.
-# If this URL changes, find the latest at: https://data-donnees.az.ec.gc.ca/
-NB_GEOCHEM_URL = (
-    "https://data-donnees.az.ec.gc.ca/api/file?"
-    "path=/ess-sst/3ac09dba-e7e3-4b72-b891-a49abf36cf48/"
-    "nb-till-geochemistry.csv"
+# ── GeoNB REST Endpoints (confirmed live 2026-04-28) ─────────────────────────
+GEONB_BASE = (
+    "https://geonb.snb.ca/arcgis/rest/services/"
+    "GeoNB_DNR_MineralOccurrences/MapServer"
 )
+MINERAL_LAYER   = 0   # Mineral occurrences (all NB)
+DRILLHOLE_LAYER = 1   # Drill holes (all NB)
 
-# Fallback — NB Open Data GeoJSON endpoint (WFS)
-NB_GEOCHEM_WFS = (
-    "https://geonb.snb.ca/arcgis/rest/services/GeoNB_EN_Geology/"
-    "MapServer/5/query?where=1%3D1&outFields=*&f=geojson"
-)
+# ArcGIS REST page size limit
+PAGE_SIZE = 1000
 
-# Column mappings from raw NB GSB till geochemistry export
-COLUMN_MAP = {
-    # Raw name              : Standardised name
-    "LONGITUDE":              "longitude",
-    "LATITUDE":               "latitude",
-    "ZN_PPM":                 "zn_ppm",
-    "PB_PPM":                 "pb_ppm",
-    "CU_PPM":                 "cu_ppm",
-    "AG_PPM":                 "ag_ppm",
-    "AU_PPB":                 "au_ppb",
-    "AS_PPM":                 "as_ppm",
-    "SAMPLE_ID":              "sample_id",
-    "YEAR":                   "year",
-    "DEPTH_CM":               "depth_cm",
-    # Alternative naming convention
-    "Longitude":              "longitude",
-    "Latitude":               "latitude",
-    "Zn_ppm":                 "zn_ppm",
-    "Pb_ppm":                 "pb_ppm",
-    "Cu_ppm":                 "cu_ppm",
-    "Ag_ppm":                 "ag_ppm",
-    "Au_ppb":                 "au_ppb",
-    "As_ppm":                 "as_ppm",
+# BMC bounding box in the service's native CRS (EPSG:2953 / NAD83 CSRS)
+# Converted from WGS84: lon_min=-67.5, lat_min=46.5, lon_max=-64.5, lat_max=48.5
+# Using a generous envelope that captures the full Bathurst camp + dispersal train
+BMC_ENVELOPE_2953 = {
+    "xmin": 2310000,
+    "ymin": 7410000,
+    "xmax": 2740000,
+    "ymax": 7660000,
 }
 
-REQUIRED_COLUMNS = ["longitude", "latitude", "zn_ppm", "pb_ppm", "cu_ppm"]
-PATHFINDER_ELEMENTS = ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]
+
+def fetch_layer_page(layer_id: int, offset: int, envelope: dict) -> dict:
+    """Fetch one page of features from the ArcGIS REST endpoint."""
+    params = {
+        "where": "1=1",
+        "geometry": (
+            f"{envelope['xmin']},{envelope['ymin']},"
+            f"{envelope['xmax']},{envelope['ymax']}"
+        ),
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "2953",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "4326",          # Request in WGS84 for easy GeoDataFrame construction
+        "f": "json",
+        "resultOffset": offset,
+        "resultRecordCount": PAGE_SIZE,
+    }
+    url = f"{GEONB_BASE}/{layer_id}/query"
+    resp = requests.get(url, params=params, timeout=60)
+    resp.raise_for_status()
+    return resp.json()
 
 
-def download_csv(url: str, dest_path: Path) -> Path:
-    """Download a file from URL with a progress bar. Returns local path."""
-    log.info(f"Downloading: {url}")
-    response = requests.get(url, stream=True, timeout=60)
-    response.raise_for_status()
+def fetch_all_features(layer_id: int, layer_name: str) -> gpd.GeoDataFrame:
+    """Paginate through all features in a GeoNB layer within the BMC envelope."""
+    log.info(f"  Fetching layer {layer_id} ({layer_name}) ...")
 
-    total = int(response.headers.get("content-length", 0))
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    all_records = []
+    offset = 0
 
-    with open(dest_path, "wb") as f, tqdm(
-        total=total, unit="B", unit_scale=True, desc=dest_path.name
-    ) as bar:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-            bar.update(len(chunk))
+    # First call to get total count
+    count_resp = requests.get(
+        f"{GEONB_BASE}/{layer_id}/query",
+        params={
+            "where": "1=1",
+            "geometry": (
+                f"{BMC_ENVELOPE_2953['xmin']},{BMC_ENVELOPE_2953['ymin']},"
+                f"{BMC_ENVELOPE_2953['xmax']},{BMC_ENVELOPE_2953['ymax']}"
+            ),
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "2953",
+            "spatialRel": "esriSpatialRelIntersects",
+            "returnCountOnly": "true",
+            "f": "json",
+        },
+        timeout=60,
+    )
+    count_resp.raise_for_status()
+    total = count_resp.json().get("count", 0)
+    log.info(f"    Total features in BMC envelope: {total}")
 
-    log.info(f"Saved to: {dest_path}")
-    return dest_path
+    pages = math.ceil(total / PAGE_SIZE) if total > 0 else 1
+    with tqdm(total=total, unit="features", desc=f"  Layer {layer_id}") as bar:
+        for _ in range(pages):
+            data = fetch_layer_page(layer_id, offset, BMC_ENVELOPE_2953)
+            features = data.get("features", [])
+            if not features:
+                break
+            for f in features:
+                attrs = f.get("attributes", {})
+                geom  = f.get("geometry", {})
+                attrs["longitude"] = geom.get("x")
+                attrs["latitude"]  = geom.get("y")
+                all_records.append(attrs)
+            bar.update(len(features))
+            offset += PAGE_SIZE
+            if len(features) < PAGE_SIZE:
+                break
 
+    if not all_records:
+        log.warning(f"    No features returned for layer {layer_id}")
+        return gpd.GeoDataFrame()
 
-def load_and_clean(csv_path: Path) -> pd.DataFrame:
-    """Load the raw CSV, standardise columns, and remove invalid rows."""
-    log.info(f"Loading {csv_path.name} ...")
-    df = pd.read_csv(csv_path, low_memory=False)
-    log.info(f"  Raw shape: {df.shape}")
-
-    # Standardise column names
-    df.rename(columns=COLUMN_MAP, inplace=True)
+    df = pd.DataFrame(all_records)
+    # Standardise column names to lowercase
     df.columns = [c.lower().strip() for c in df.columns]
 
-    # Check required columns are present
-    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-    if missing:
-        raise ValueError(
-            f"Required columns missing from downloaded data: {missing}\n"
-            f"Available columns: {list(df.columns)}"
-        )
-
-    # Coerce numeric pathfinder columns
-    for col in PATHFINDER_ELEMENTS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Drop rows with no coordinates
-    df.dropna(subset=["longitude", "latitude"], inplace=True)
-
-    # Enforce valid coordinate ranges
-    df = df[
-        (df["longitude"].between(-180, 180)) &
-        (df["latitude"].between(-90, 90))
+    # Build geometry
+    geometry = [
+        Point(row["longitude"], row["latitude"])
+        for _, row in df.iterrows()
+        if pd.notna(row.get("longitude")) and pd.notna(row.get("latitude"))
     ]
-
-    log.info(f"  Cleaned shape: {df.shape}")
-    return df
-
-
-def clip_to_bmc(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Clip to Bathurst Mining Camp bounding box + 50km buffer."""
-    lon_min, lat_min, lon_max, lat_max = BMC_BBOX_WGS84
-    # Add a generous buffer so we capture till samples in the dispersal train
-    buffer = 0.5  # ~50km in degrees at this latitude
-    clipped = gdf.cx[
-        lon_min - buffer : lon_max + buffer,
-        lat_min - buffer : lat_max + buffer
-    ]
-    log.info(f"  BMC clip: {len(gdf)} → {len(clipped)} samples retained")
-    return clipped.copy()
-
-
-def build_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
-    """Convert DataFrame to GeoDataFrame in WGS84, reprojects to EPSG:2953."""
-    geometry = [Point(xy) for xy in zip(df["longitude"], df["latitude"])]
-    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS_SOURCE)
-    gdf = gdf.to_crs(CRS_TARGET)
-    log.info(f"  Reprojected to {CRS_TARGET}")
+    df = df[df["longitude"].notna() & df["latitude"].notna()].reset_index(drop=True)
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS_SOURCE)  # WGS84 from outSR=4326
+    gdf = gdf.to_crs(CRS_TARGET)  # → EPSG:2953
+    log.info(f"    Loaded {len(gdf)} features, reprojected to {CRS_TARGET}")
     return gdf
 
 
-def summarise(gdf: gpd.GeoDataFrame):
-    """Print a summary of the pathfinder element distributions."""
-    log.info("\n─── Pathfinder Summary (BMC Till Samples) ───")
-    for col in PATHFINDER_ELEMENTS:
-        if col in gdf.columns and gdf[col].notna().any():
-            log.info(
-                f"  {col:12s}: n={gdf[col].notna().sum():5d}  "
-                f"median={gdf[col].median():.2f}  "
-                f"max={gdf[col].max():.2f}"
-            )
-
-
 def main():
-    log.info("═══ NB Till Geochemistry Download ═══")
+    log.info("═══ GeoNB Mineral Occurrences & Drill Holes Download ═══")
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir = RAW_DIR / "geonb"
+    out_dir.mkdir(exist_ok=True)
 
-    # ── Step 1: Download raw CSV ─────────────────────────────────────────────
-    raw_csv = RAW_DIR / "nb_till_geochemistry_raw.csv"
-
-    if raw_csv.exists():
-        log.info(f"Raw CSV already exists — skipping download: {raw_csv}")
+    # ── Layer 0: Mineral Occurrences ─────────────────────────────────────────
+    log.info("\n[1/2] Mineral Occurrences (Layer 0) ...")
+    mineral_gpkg = out_dir / "nb_mineral_occurrences.gpkg"
+    if mineral_gpkg.exists():
+        log.info(f"  Already exists — skipping: {mineral_gpkg}")
+        mineral_gdf = gpd.read_file(mineral_gpkg)
     else:
-        try:
-            download_csv(NB_GEOCHEM_URL, raw_csv)
-        except Exception as e:
-            log.warning(f"Primary URL failed ({e}). Trying WFS endpoint ...")
-            # Fall back: fetch GeoJSON from GeoNB WFS
-            resp = requests.get(NB_GEOCHEM_WFS, timeout=120)
-            resp.raise_for_status()
-            gdf_raw = gpd.read_file(resp.text)
-            gdf_raw.to_csv(raw_csv, index=False)
-            log.info(f"WFS data saved to: {raw_csv}")
+        mineral_gdf = fetch_all_features(MINERAL_LAYER, "Mineral Occurrences")
+        if not mineral_gdf.empty:
+            mineral_gdf.to_file(mineral_gpkg, driver="GPKG", layer="mineral_occurrences")
+            log.info(f"  ✅ Saved → {mineral_gpkg}")
 
-    # ── Step 2: Clean & structure ────────────────────────────────────────────
-    df = load_and_clean(raw_csv)
+    # ── Layer 1: Drill Holes ─────────────────────────────────────────────────
+    log.info("\n[2/2] Drill Holes (Layer 1) ...")
+    drillhole_gpkg = out_dir / "nb_drill_holes.gpkg"
+    if drillhole_gpkg.exists():
+        log.info(f"  Already exists — skipping: {drillhole_gpkg}")
+        drill_gdf = gpd.read_file(drillhole_gpkg)
+    else:
+        drill_gdf = fetch_all_features(DRILLHOLE_LAYER, "Drill Holes")
+        if not drill_gdf.empty:
+            drill_gdf.to_file(drillhole_gpkg, driver="GPKG", layer="drill_holes")
+            log.info(f"  ✅ Saved → {drillhole_gpkg}")
 
-    # ── Step 3: Build GeoDataFrame & clip to BMC ────────────────────────────
-    gdf = build_geodataframe(df)
-    gdf = clip_to_bmc(gdf)
-
-    # ── Step 4: Summary statistics ───────────────────────────────────────────
-    summarise(gdf)
-
-    # ── Step 5: Save output GeoPackage ──────────────────────────────────────
-    GEOCHEMISTRY_GPKG.parent.mkdir(parents=True, exist_ok=True)
-    gdf.to_file(GEOCHEMISTRY_GPKG, driver="GPKG", layer="till_geochemistry")
-    log.info(f"\n✅ Saved {len(gdf)} samples → {GEOCHEMISTRY_GPKG}")
-    log.info("   Run next: python pipeline/01_data_download/download_vms_labels.py")
+    # ── Summary ──────────────────────────────────────────────────────────────
+    log.info("\n─── Download Summary ───")
+    log.info(f"  Mineral occurrences : {len(mineral_gdf):5d} points")
+    log.info(f"  Drill holes         : {len(drill_gdf):5d} points")
+    log.info(f"  Output directory    : {out_dir}")
+    log.info("\nNOTE: Till ICP-MS geochemistry requires manual download.")
+    log.info("      See pipeline/DATA_ACQUISITION_GUIDE.md for instructions.")
+    log.info("\nRun next: python pipeline/01_data_download/download_vms_labels.py")
 
 
 if __name__ == "__main__":
