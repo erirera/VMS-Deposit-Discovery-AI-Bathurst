@@ -63,106 +63,106 @@ CANDIDATE_DOWNLOADS: dict[str, dict] = {
 
 # ── Manual Download Instructions ──────────────────────────────────────────────
 MANUAL_INSTRUCTIONS = """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║     MANUAL DOWNLOAD REQUIRED — Aeromagnetic & Geophysical Raster Data      ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+==============================================================================
+     MANUAL DOWNLOAD REQUIRED -- Aeromagnetic & Geophysical Raster Data      
+==============================================================================
 
 The NB DNRED and NRCan portals deliver raster grids through session-based
 download buttons that cannot be reliably automated. Follow the steps below,
 then place all files in:  data/raw/rasters/
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- OPTION A (Recommended) — NB DNRED Compiled Grids   [No account needed]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
+ OPTION A (Recommended) -- NB DNRED Compiled Grids   [No account needed]
+------------------------------------------------------------------------------
 
  START HERE:
    https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data.html
 
- STEP 1 — AEROMAGNETICS
-   Click → "Aeromagnetic Data - Compiled"
+ STEP 1 -- AEROMAGNETICS
+   Click -> "Aeromagnetic Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/aeromagnetic-data-compiled.html
    Download:
-     • TMI (Total Magnetic Intensity) grid  → rename to: mag_tmi_nb_compiled.tif
-     • FVD (First Vertical Derivative) grid → rename to: mag_fvd_nb_compiled.tif
+     * TMI (Total Magnetic Intensity) grid  -> rename to: mag_tmi_nb_compiled.tif
+     * FVD (First Vertical Derivative) grid -> rename to: mag_fvd_nb_compiled.tif
    Format: GeoTIFF preferred; ASCII grid (.asc) also accepted
    Place in:  data/raw/rasters/
 
- STEP 2 — RADIOMETRICS
-   Click → "Radiometric Data - Compiled"
+ STEP 2 -- RADIOMETRICS
+   Click -> "Radiometric Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/radiometric-data-compiled.html
    Download (separate file for each channel):
-     • Potassium K%   → rename to: rad_k_nb_compiled.tif
-     • Thorium Th ppm → rename to: rad_th_nb_compiled.tif
-     • Uranium U ppm  → rename to: rad_u_nb_compiled.tif
+     * Potassium K%   -> rename to: rad_k_nb_compiled.tif
+     * Thorium Th ppm -> rename to: rad_th_nb_compiled.tif
+     * Uranium U ppm  -> rename to: rad_u_nb_compiled.tif
    Place in:  data/raw/rasters/
 
- STEP 3 — GRAVITY GRADIOMETRY
-   Click → "Gravity Gradiometry Data - Compiled"
+ STEP 3 -- GRAVITY GRADIOMETRY
+   Click -> "Gravity Gradiometry Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/gravity-gradiometry-compiled.html
    Download the Bouguer anomaly (or Gz / vertical gradient) grid
-   → rename to: gravity_bouguer_nb.tif
+   -> rename to: gravity_bouguer_nb.tif
    Place in:  data/raw/rasters/
 
- STEP 4 — FOR HIGHER RESOLUTION (optional, individual surveys)
+ STEP 4 -- FOR HIGHER RESOLUTION (optional, individual surveys)
    Aeromagnetic: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/aeromagnetic-data-individual.html
    Radiometric:  https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/radiometric-data-individual.html
    Gravity:      https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/gravity-gradiometry-individual.html
-   → Look for surveys in the Bathurst, Nepisiguit, Tetagouche, Restigouche area
-   → Lat: 47.0°N – 48.0°N  |  Lon: 65.5°W – 67.0°W
+   -> Look for surveys in the Bathurst, Nepisiguit, Tetagouche, Restigouche area
+   -> Lat: 47.0 N - 48.0 N  |  Lon: 65.5 W - 67.0 W
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- OPTION B — NRCan Geoscience Data Repository (national archive)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
+ OPTION B -- NRCan Geoscience Data Repository (national archive)
+------------------------------------------------------------------------------
 
  1. Open: https://gdr.agg.nrcan.gc.ca/gdrdap/dap/portal
     (alternative: https://geophysical-data.canada.ca/)
 
- 2. Click "Search by Province" → select "New Brunswick"
+ 2. Click "Search by Province" -> select "New Brunswick"
     OR click "Search by Map", draw bounding box over Bathurst area:
-    Lat 47.0°N–48.0°N  |  Lon 65.5°W–67.0°W
+    Lat 47.0 N - 48.0 N  |  Lon 65.5 W - 67.0 W
 
- 3. Browse survey list — look for surveys covering:
+ 3. Browse survey list -- look for surveys covering:
     Keywords: Bathurst, Tetagouche, Nepisiguit, Gloucester, Restigouche
 
- 4. Click each relevant survey → Download
+ 4. Click each relevant survey -> Download
     Preferred format: GeoTIFF (.tif)
     Alternative: ASCII grid (.grd, .asc)
 
  5. If only Geosoft binary format (.grd / .ers) is available:
-    → Convert to GeoTIFF using QGIS:
-        Raster → Miscellaneous → Translate (Convert Format)
-    → Or with GDAL command line (free, no Oasis Montaj license needed):
+    -> Convert to GeoTIFF using QGIS:
+        Raster -> Miscellaneous -> Translate (Convert Format)
+    -> Or with GDAL command line (free, no Oasis Montaj license needed):
         gdal_translate -of GTiff input.grd output.tif
 
  6. Rename and place in: data/raw/rasters/
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- OPTION C — NRCan Open Government Portal (alternative search)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
+ OPTION C -- NRCan Open Government Portal (alternative search)
+------------------------------------------------------------------------------
 
  1. Open: https://open.canada.ca/en/open-data
  2. Search: "New Brunswick aeromagnetic geophysical survey"
  3. Filter: Organisation = "Natural Resources Canada"
  4. Download relevant GeoTIFF packages
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
  EXPECTED FILE STRUCTURE after manual download:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
 
    data/raw/rasters/
-   ├── mag_tmi_nb_compiled.tif    ← Total Magnetic Intensity (compiled)
-   ├── mag_fvd_nb_compiled.tif    ← First Vertical Derivative (compiled)
-   ├── rad_k_nb_compiled.tif      ← Potassium K% radiometric
-   ├── rad_th_nb_compiled.tif     ← Thorium ppm radiometric
-   ├── rad_u_nb_compiled.tif      ← Uranium ppm radiometric
-   └── gravity_bouguer_nb.tif     ← Bouguer anomaly / gravity gradiometry
+   +-- mag_tmi_nb_compiled.tif    <- Total Magnetic Intensity (compiled)
+   +-- mag_fvd_nb_compiled.tif    <- First Vertical Derivative (compiled)
+   +-- rad_k_nb_compiled.tif      <- Potassium K% radiometric
+   +-- rad_th_nb_compiled.tif     <- Thorium ppm radiometric
+   +-- rad_u_nb_compiled.tif      <- Uranium ppm radiometric
+   +-- gravity_bouguer_nb.tif     <- Bouguer anomaly / gravity gradiometry
 
  After placing files, run:
    python pipeline/02_preprocessing/reproject_grids.py
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- CONTACT — If portals are down or datasets not found:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------------------------------------------------------
+ CONTACT -- If portals are down or datasets not found:
+------------------------------------------------------------------------------
 
  NB Geological Survey Branch
    Phone: 506-453-2206  |  Email: minerals@gnb.ca
@@ -173,7 +173,7 @@ then place all files in:  data/raw/rasters/
    Web: https://gdr.agg.nrcan.gc.ca/
 
  Full guide: pipeline/DATA_ACQUISITION_GUIDE.md
-╚══════════════════════════════════════════════════════════════════════════════╝
+==============================================================================
 """
 
 
