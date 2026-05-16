@@ -15,15 +15,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # ── Data Directory Structure ──────────────────────────────────────────────────
 DATA_DIR        = REPO_ROOT / "data"
 RAW_DIR         = DATA_DIR / "raw"
-PROCESSED_DIR   = DATA_DIR / "processed"
-RASTERS_DIR     = RAW_DIR / "rasters"          # Geophysical grids
-LABELS_DIR      = RAW_DIR / "labels"           # Deposit & barren locations
-MODELS_DIR      = REPO_ROOT / "models"         # Saved .joblib model files
-OUTPUTS_DIR     = REPO_ROOT / "outputs"        # Maps, figures, reports
-NOTEBOOKS_DIR   = REPO_ROOT / "pipeline" / "notebooks"
+PROCESSED_DIR       = DATA_DIR / "processed"
+RASTERS_DIR         = RAW_DIR / "rasters"              # Geophysical grids
+LABELS_DIR          = RAW_DIR / "labels"               # Deposit & barren locations
+MAG_DERIVATIVES_DIR = PROCESSED_DIR / "mag_derivatives" # Computed magnetic derivatives
+MODELS_DIR          = REPO_ROOT / "models"             # Saved .joblib model files
+OUTPUTS_DIR         = REPO_ROOT / "outputs"            # Maps, figures, reports
+NOTEBOOKS_DIR       = REPO_ROOT / "pipeline" / "notebooks"
 
 # Create directories if they don't exist
-for _dir in [RAW_DIR, PROCESSED_DIR, RASTERS_DIR, LABELS_DIR, MODELS_DIR, OUTPUTS_DIR]:
+for _dir in [RAW_DIR, PROCESSED_DIR, RASTERS_DIR, LABELS_DIR,
+             MAG_DERIVATIVES_DIR, MODELS_DIR, OUTPUTS_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)
 
 # ── Coordinate Reference Systems ──────────────────────────────────────────────
@@ -40,16 +42,22 @@ POSITIVE_BUFFER_M = 500   # 500m radius = confident mineralised zone
 NEGATIVE_BUFFER_M = 500   # 500m radius around confirmed barren holes
 
 # ── Raster Processing ─────────────────────────────────────────────────────────
-TARGET_RESOLUTION_M = 100   # 100m pixel resolution for all geophysical grids
-NODATA_VALUE        = -9999
+TARGET_RESOLUTION_M      = 100   # 100m pixel resolution for all geophysical grids
+MAG_DERIVATIVE_RESOLUTION_M = 50 # 50m resolution for magnetic derivative grids
+NODATA_VALUE             = -9999
 
 # ── Feature Engineering ───────────────────────────────────────────────────────
 # Geophysical raster bands expected after download/preprocessing
 RASTER_FEATURES = [
     "mag_tmi",          # Total Magnetic Intensity
-    "mag_fvd",          # First Vertical Derivative
-    "mag_as",           # Analytic Signal (derived)
-    "mag_hg",           # Horizontal Gradient Magnitude (derived)
+    # ── Magnetic derivatives (computed by compute_mag_derivatives.py) ──
+    "mag_rmi_fvd_bmc",  # First Vertical Derivative
+    "mag_rmi_thg_bmc",  # Total Horizontal Gradient
+    "mag_rmi_as_bmc",   # Analytic Signal Amplitude
+    "mag_rmi_tdr_bmc",  # Tilt Derivative
+    "mag_rmi_thdr_bmc", # Tilt Horizontal Gradient
+    "mag_rmi_svd_bmc",  # Second Vertical Derivative
+    # ── Other geophysical layers ──
     "rad_k",            # Radiometric potassium %
     "rad_th",           # Thorium (ppm)
     "rad_u",            # Uranium (ppm)

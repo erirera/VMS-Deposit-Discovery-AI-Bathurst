@@ -1,0 +1,106 @@
+# Magnetic Derivative Computation — `mag_rmi_bmc_compiled.tif`
+
+## Background
+
+`mag_rmi_bmc_compiled.tif` is the compiled Residual Magnetic Intensity (RMI) grid for the Bathurst Mining Camp. It lives in `data/raw/rasters/`. The existing pipeline reprojects raw rasters to EPSG:2953 at 100 m resolution (`reproject_grids.py`), then extracts point values for ML training. 
+
+This plan adds a **new dedicated script** — `compute_mag_derivatives.py` — that computes standard geophysical derivatives directly on the **2D raster grid** (not the point sample table), saves each derivative as its own GeoTIFF in `data/processed/mag_derivatives/`, and makes them available as additional raster bands for `extract_features.py`.
+
+---
+
+## Proposed Derivatives
+
+| # | Derivative | Symbol | Geophysical Purpose for VMS |
+|---|------------|--------|------------------------------|
+| 1 | **First Vertical Derivative** | FVD | Sharpens edges of magnetic bodies; highlights near-surface sources |
+| 2 | **Total Horizontal Gradient** | THG | Delineates contacts/faults (ridges = boundaries of magnetic bodies) |
+| 3 | **Analytic Signal Amplitude** | AS | Amplitude-only, position independent of inclination — useful at high latitudes |
+| 4 | **Tilt Derivative** | TDR | Self-normalising; maps both strong and weak anomalies uniformly. Zero contour = body edge |
+| 5 | **Tilt Horizontal Gradient** | THDR | Combines TDR + THG; sharper edge detection than either alone |
+| 6 | **Second Vertical Derivative** | SVD | Enhances shallow, short-wavelength anomalies; suppresses regional field |
+
+> **Why these derivatives?** VMS deposits are typically associated with:
+> - **Faults/shear zones** → detected by THG and THDR zero-contours
+> - **Near-surface mafic/felsic contacts** → FVD and AS
+> - **Footprint alteration haloes** → TDR (uniform response regardless of body strength)
+> - **Regional filtering** → SVD suppresses deep/broad signals to expose shallower targets
+
+---
+
+## Implementation Details
+
+### Computation Approach
+All derivatives are computed using **finite differences on the reprojected 100 m grid** (EPSG:2953). The RMI grid will first be reprojected (if not already done) before derivative computation.
+
+**Derivative formulas:**
+- `FVD` ≈ `∂B/∂z` computed in wavenumber domain (FFT-based — most accurate for potential field data)
+- `THG = sqrt((∂B/∂x)² + (∂B/∂y)²)` via `np.gradient` on gridded data
+- `AS = sqrt((∂B/∂x)² + (∂B/∂y)² + (∂B/∂z)²)` = `sqrt(THG² + FVD²)`
+- `TDR = arctan(FVD / THG)`
+- `THDR = sqrt((∂TDR/∂x)² + (∂TDR/∂y)²)`
+- `SVD ≈ (∂/∂z)[FVD]` = second application of vertical derivative in wavenumber domain
+
+### FFT-based vertical derivative
+Using the **wavenumber domain** approach (multiply FFT by `|k| * 2π`) gives far better results than finite difference for the vertical derivative — this is the industry standard.
+
+---
+
+## Proposed Changes
+
+### New Script
+
+#### [NEW] `compute_mag_derivatives.py`
+**Path:** `pipeline/02_preprocessing/compute_mag_derivatives.py`
+
+- Reads `mag_rmi_bmc_compiled.tif` from `data/raw/rasters/`
+- Reprojects to EPSG:2953 at 100 m (reuses the existing `reproject_raster()` helper from `reproject_grids.py`)
+- Computes all 6 derivatives on the 2D array
+- Saves each as a separate GeoTIFF to `data/processed/mag_derivatives/`
+- Outputs a summary table (min/max/std for each derivative)
+
+### Config Update
+
+#### [MODIFY] `pipeline/config.py`
+- Add `MAG_DERIVATIVES_DIR = PROCESSED_DIR / "mag_derivatives"` path constant
+- Add derivative band names to `RASTER_FEATURES` list
+
+---
+
+## Output Files
+
+```
+data/processed/mag_derivatives/
+  ├── mag_rmi_fvd_bmc.tif      # First Vertical Derivative
+  ├── mag_rmi_thg_bmc.tif      # Total Horizontal Gradient
+  ├── mag_rmi_as_bmc.tif       # Analytic Signal Amplitude
+  ├── mag_rmi_tdr_bmc.tif      # Tilt Derivative
+  ├── mag_rmi_thdr_bmc.tif     # Tilt Horizontal Gradient
+  └── mag_rmi_svd_bmc.tif      # Second Vertical Derivative
+```
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Do you want the FVD/SVD computed in the wavenumber (FFT) domain or using spatial finite differences?**
+> - **FFT domain** (recommended): more accurate for potential field data, handles edge effects via padding. Requires no extra dependencies beyond `numpy`.
+> - **Finite differences**: simpler, faster for quick QC, slightly less accurate.
+> The plan above uses **FFT** for vertical derivatives and **`np.gradient`** for horizontal derivatives — this is the standard approach.
+
+> [!NOTE]
+> **Should the derivatives also be clipped to the BMC bounding box** before saving, or keep the full extent of the source grid? 
+> Current plan: keep full extent (same footprint as the reprojected source TIF).
+
+> [!NOTE]
+> **Should we add a quick matplotlib visualization** (PNG export) of each derivative for QC purposes?
+> This would allow you to visually inspect each grid right after running the script.
+
+---
+
+## Verification Plan
+
+1. Run `compute_mag_derivatives.py` and confirm 6 GeoTIFFs are written to `data/processed/mag_derivatives/`
+2. Verify each output shares the same CRS (EPSG:2953), resolution (100m), and extent as the reprojected source
+3. Check summary statistics (FVD should be ~10–20% of TMI amplitude; AS should be strictly positive)
+4. Optionally open in QGIS / view in browser for visual QC
