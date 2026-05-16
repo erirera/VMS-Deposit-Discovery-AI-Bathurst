@@ -82,8 +82,8 @@ then place all files in:  data/raw/rasters/
    Click -> "Aeromagnetic Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/aeromagnetic-data-compiled.html
    Download:
-     * TMI (Total Magnetic Intensity) grid  -> rename to: mag_tmi_nb_compiled.tif
-     * FVD (First Vertical Derivative) grid -> rename to: mag_fvd_nb_compiled.tif
+     * RMI (Residual Magnetic Intensity) grid  -> rename to: mag_rmi_bmc_compiled.tif 
+     * FVD (First Vertical Derivative) grid -> rename to: mag_fvd_bmc_compiled.tif
    Format: GeoTIFF preferred; ASCII grid (.asc) also accepted
    Place in:  data/raw/rasters/
 
@@ -91,16 +91,16 @@ then place all files in:  data/raw/rasters/
    Click -> "Radiometric Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/radiometric-data-compiled.html
    Download (separate file for each channel):
-     * Potassium K%   -> rename to: rad_k_nb_compiled.tif
-     * Thorium Th ppm -> rename to: rad_th_nb_compiled.tif
-     * Uranium U ppm  -> rename to: rad_u_nb_compiled.tif
+     * Potassium K%   -> rename to: rad_k_bmc_compiled.tif
+     * Thorium Th ppm -> rename to: rad_th_bmc_compiled.tif
+     * Uranium U ppm  -> rename to: rad_u_bmc_compiled.tif
    Place in:  data/raw/rasters/
 
  STEP 3 -- GRAVITY GRADIOMETRY
    Click -> "Gravity Gradiometry Data - Compiled"
    URL: https://www2.gnb.ca/content/gnb/en/departments/erd/open-data/geophysical-data/gravity-gradiometry-compiled.html
    Download the Bouguer anomaly (or Gz / vertical gradient) grid
-   -> rename to: gravity_bouguer_nb.tif
+   -> rename to: gravity_bouguer_bmc.tif
    Place in:  data/raw/rasters/
 
  STEP 4 -- FOR HIGHER RESOLUTION (optional, individual surveys)
@@ -150,12 +150,11 @@ then place all files in:  data/raw/rasters/
 ------------------------------------------------------------------------------
 
    data/raw/rasters/
-   +-- mag_tmi_nb_compiled.tif    <- Total Magnetic Intensity (compiled)
-   +-- mag_fvd_nb_compiled.tif    <- First Vertical Derivative (compiled)
-   +-- rad_k_nb_compiled.tif      <- Potassium K% radiometric
-   +-- rad_th_nb_compiled.tif     <- Thorium ppm radiometric
-   +-- rad_u_nb_compiled.tif      <- Uranium ppm radiometric
-   +-- gravity_bouguer_nb.tif     <- Bouguer anomaly / gravity gradiometry
+   +-- mag_rmi_bmc_compiled.tif    <- Residual RMI BMC
+   +-- rad_k_bmc_compiled.tif      <- Potassium K% radiometric BMC
+   +-- rad_th_bmc_compiled.tif     <- Thorium ppm radiometric BMC
+   +-- rad_u_bmc_compiled.tif      <- Uranium ppm radiometric BMC
+   +-- gravity_bouguer_bmc.tif     <- Bouguer anomaly / gravity gradiometry BMC
 
  After placing files, run:
    python pipeline/02_preprocessing/reproject_grids.py
