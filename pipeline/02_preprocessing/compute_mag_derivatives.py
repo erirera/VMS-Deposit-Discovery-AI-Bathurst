@@ -1,36 +1,54 @@
 """
 compute_mag_derivatives.py
-──────────────────────────
-Computes six standard geophysical derivative grids from the compiled
-Residual Magnetic Intensity (RMI) raster for the Bathurst Mining Camp.
+--------------------------
+Computes six standard geophysical derivative grids from any Residual
+Magnetic Intensity (RMI) raster for the Bathurst Mining Camp.
 
-Source raster  : data/raw/rasters/mag_rmi_bmc_compiled.tif
-Output rasters : data/processed/mag_derivatives/  (one GeoTIFF per derivative)
-QC figures     : data/processed/mag_derivatives/qc_plots/  (one PNG per derivative)
+Each source raster gets its own output subfolder under mag_derivatives/,
+so you can run this script on multiple inputs and compare results.
+
+Output layout (per source)
+---------------------------
+  data/processed/mag_derivatives/<source_stem>/
+    mag_rmi_fvd_bmc.tif       First Vertical Derivative
+    mag_rmi_thg_bmc.tif       Total Horizontal Gradient
+    mag_rmi_as_bmc.tif        Analytic Signal Amplitude
+    mag_rmi_tdr_bmc.tif       Tilt Derivative
+    mag_rmi_thdr_bmc.tif      Tilt Horizontal Gradient
+    mag_rmi_svd_bmc.tif       Second Vertical Derivative
+    qc_plots/
+      *.png                   Quick-look PNGs for every derivative
 
 Derivatives computed
-────────────────────
-  1. FVD   — First Vertical Derivative       (FFT wavenumber domain)
-  2. THG   — Total Horizontal Gradient       (numpy.gradient on 2-D grid)
-  3. AS    — Analytic Signal Amplitude       = sqrt(THG² + FVD²)
-  4. TDR   — Tilt Derivative                 = arctan(FVD / THG)
-  5. THDR  — Tilt Horizontal Gradient        = horizontal gradient of TDR
-  6. SVD   — Second Vertical Derivative      (FFT wavenumber domain)
-
-All outputs share the same CRS, transform, and resolution as the source
-(after reprojection to EPSG:2953 at 100 m).
+--------------------
+  1. FVD  -- First Vertical Derivative       (FFT wavenumber domain)
+  2. THG  -- Total Horizontal Gradient       (numpy.gradient on 2-D grid)
+  3. AS   -- Analytic Signal Amplitude       = sqrt(THG^2 + FVD^2)
+  4. TDR  -- Tilt Derivative                 = arctan(FVD / THG)
+  5. THDR -- Tilt Horizontal Gradient        = horizontal gradient of TDR
+  6. SVD  -- Second Vertical Derivative      (FFT wavenumber domain)
 
 Usage
-─────
-    python pipeline/02_preprocessing/compute_mag_derivatives.py
+-----
+  # Default source (mag_rmi_bmc_compiled.tif)
+  python pipeline/02_preprocessing/compute_mag_derivatives.py
+
+  # Any other source in data/raw/rasters/
+  python pipeline/02_preprocessing/compute_mag_derivatives.py \\
+      --source mag_rmi_bmc_nrcan_compiled.tif
+
+  # Full path to source anywhere on disk
+  python pipeline/02_preprocessing/compute_mag_derivatives.py \\
+      --source /path/to/any_mag_grid.tif
 
 Dependencies
-────────────
-    rasterio, numpy, scipy (for FFT padding), matplotlib, tqdm
-    All available in the standard pipeline environment.
+------------
+  rasterio, numpy, matplotlib, tqdm
+  All available in the standard pipeline environment.
 """
 
 import sys
+import argparse
 import logging
 from pathlib import Path
 
@@ -38,12 +56,11 @@ import numpy as np
 import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import matplotlib
-matplotlib.use("Agg")          # headless — no display required
+matplotlib.use("Agg")          # headless -- no display required
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 from tqdm import tqdm
 
-# ── Path bootstrap ────────────────────────────────────────────────────────────
+# ── Path bootstrap ------------------------------------------------------------
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
@@ -58,10 +75,8 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-SOURCE_RASTER  = RASTERS_DIR / "mag_rmi_bmc_compiled.tif"
-REPROJ_RASTER  = MAG_DERIVATIVES_DIR / "mag_rmi_bmc_epsg2953_50m.tif"
-QC_DIR         = MAG_DERIVATIVES_DIR / "qc_plots"
+# ── Fixed constants -----------------------------------------------------------
+DEFAULT_SOURCE = "mag_rmi_bmc_compiled.tif"
 EPSILON        = 1e-10          # Guard against divide-by-zero
 
 DERIVATIVES = {
@@ -267,12 +282,14 @@ def save_qc_png(
     name: str,
     title: str,
     dst_path: Path,
+    source_label: str = "",
+    res_m: float = 50.0,
 ) -> None:
     """Export a quick-look PNG of a derivative grid."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Choose diverging colourmap for signed derivatives, sequential for positive
-    signed = name in {"mag_rmi_fvd_bmc", "mag_rmi_tdr_bmc", "mag_rmi_svd_bmc"}
+    signed = "fvd" in name or "tdr" in name or "svd" in name
     cmap = "RdBu_r" if signed else "magma"
 
     vmin, vmax = _pct_clip(arr)
@@ -291,10 +308,19 @@ def save_qc_png(
         aspect="equal",
     )
     cbar = fig.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
-    cbar.set_label("nT / m" if "fvd" in name or "svd" in name else "nT/m" if "thg" in name or "as_" in name or "thdr" in name else "rad", fontsize=9)
-    ax.set_title(f"Bathurst Mining Camp — {title}", fontsize=11, fontweight="bold", pad=10)
-    ax.set_xlabel("Column (100 m pixels)", fontsize=8)
-    ax.set_ylabel("Row (100 m pixels)", fontsize=8)
+    cbar.set_label(
+        "nT / m" if "fvd" in name or "svd" in name
+        else "nT/m" if "thg" in name or "as" in name or "thdr" in name
+        else "rad",
+        fontsize=9,
+    )
+    ax.set_title(
+        f"Bathurst Mining Camp -- {title}\n"
+        f"source: {source_label}  |  EPSG:2953  |  {res_m:.0f} m",
+        fontsize=11, fontweight="bold", pad=10,
+    )
+    ax.set_xlabel(f"Column ({res_m:.0f} m pixels)", fontsize=8)
+    ax.set_ylabel(f"Row ({res_m:.0f} m pixels)", fontsize=8)
     ax.tick_params(labelsize=7)
 
     # Stats annotation
@@ -313,76 +339,113 @@ def save_qc_png(
     log.info(f"    QC PNG → {dst_path.name}")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── CLI + Main ----------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Compute 6 magnetic derivatives from an RMI raster."
+    )
+    p.add_argument(
+        "--source",
+        default=DEFAULT_SOURCE,
+        help=(
+            "Source raster filename (looked up in data/raw/rasters/) "
+            "or an absolute path. Default: %(default)s"
+        ),
+    )
+    return p.parse_args()
+
+
+def resolve_source(source_arg: str) -> Path:
+    """Return an absolute Path to the source raster."""
+    p = Path(source_arg)
+    if p.is_absolute() and p.exists():
+        return p
+    candidate = RASTERS_DIR / p.name
+    if candidate.exists():
+        return candidate
+    raise FileNotFoundError(
+        f"Source raster not found.\n"
+        f"  Tried: {p}\n"
+        f"  Tried: {candidate}\n"
+        f"  Place the file in data/raw/rasters/ or pass a full path."
+    )
+
 
 def main():
-    log.info("═══ Magnetic Derivative Computation — BMC ═══")
-    log.info(f"Source : {SOURCE_RASTER}")
-    log.info(f"Output : {MAG_DERIVATIVES_DIR}")
+    args = parse_args()
+    source_raster = resolve_source(args.source)
+    source_stem   = source_raster.stem                     # e.g. mag_rmi_bmc_nrcan_compiled
 
-    # ── Guard: source raster must exist ──────────────────────────────────────
-    if not SOURCE_RASTER.exists():
-        raise FileNotFoundError(
-            f"\n✗ Source raster not found:\n  {SOURCE_RASTER}\n"
-            "  Ensure mag_rmi_bmc_compiled.tif is placed in data/raw/rasters/"
-        )
+    # Per-source output directories
+    out_dir    = MAG_DERIVATIVES_DIR / source_stem         # subfolder per source
+    reproj_tif = out_dir / f"{source_stem}_epsg2953_{MAG_DERIVATIVE_RESOLUTION_M}m.tif"
+    qc_dir     = out_dir / "qc_plots"
 
-    # ── Step 1: Reproject ─────────────────────────────────────────────────────
-    MAG_DERIVATIVES_DIR.mkdir(parents=True, exist_ok=True)
+    log.info("=== Magnetic Derivative Computation -- BMC ===")
+    log.info(f"Source  : {source_raster}")
+    log.info(f"Output  : {out_dir}")
+    log.info(f"Res     : {MAG_DERIVATIVE_RESOLUTION_M} m")
 
-    if REPROJ_RASTER.exists():
-        log.info(f"\n[1/3] Reprojected raster already exists — skipping.")
-        log.info(f"      ({REPROJ_RASTER.name})")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Step 1: Reproject ----------------------------------------------------
+    if reproj_tif.exists():
+        log.info(f"\n[1/3] Reprojected raster already exists -- skipping.")
+        log.info(f"      ({reproj_tif.name})")
     else:
         log.info(f"\n[1/3] Reprojecting to EPSG:2953 at {MAG_DERIVATIVE_RESOLUTION_M} m ...")
-        reproject_to_target(SOURCE_RASTER, REPROJ_RASTER)
+        reproject_to_target(source_raster, reproj_tif)
 
-    # ── Step 2: Load reprojected grid ─────────────────────────────────────────
+    # ── Step 2: Load ---------------------------------------------------------
     log.info("\n[2/3] Loading reprojected grid ...")
-    with rasterio.open(REPROJ_RASTER) as src:
+    with rasterio.open(reproj_tif) as src:
         ref_profile = src.profile.copy()
-        raw = src.read(1).astype(np.float64)
+        raw    = src.read(1).astype(np.float64)
         nodata = src.nodata if src.nodata is not None else NODATA_VALUE
-        dx = src.res[0]    # pixel size in metres (square pixels assumed)
+        dx     = src.res[0]
 
-    # Mask nodata
-    grid = np.where(raw == nodata, np.nan, raw).astype(np.float64)
+    grid    = np.where(raw == nodata, np.nan, raw).astype(np.float64)
     n_valid = int(np.sum(~np.isnan(grid)))
-    log.info(f"  Grid shape : {grid.shape[0]} × {grid.shape[1]}")
+    log.info(f"  Grid shape : {grid.shape[0]} x {grid.shape[1]}")
     log.info(f"  Pixel size : {dx:.1f} m")
     log.info(f"  Valid cells: {n_valid:,} / {grid.size:,}")
 
-    # ── Step 3: Compute derivatives ───────────────────────────────────────────
+    # ── Step 3: Compute -------------------------------------------------------
     log.info("\n[3/3] Computing derivatives ...")
     deriv_grids = compute_all_derivatives(grid, dx)
 
-    # ── Write outputs ─────────────────────────────────────────────────────────
-    log.info("\n─── Writing GeoTIFFs + QC PNGs ───")
+    # ── Write outputs --------------------------------------------------------
+    log.info("\n--- Writing GeoTIFFs + QC PNGs ---")
     summary_rows = []
 
     for stem, title in tqdm(DERIVATIVES.items(), desc="Writing outputs"):
-        arr = deriv_grids[stem]
-        tif_path = MAG_DERIVATIVES_DIR / f"{stem}.tif"
-        png_path  = QC_DIR / f"{stem}_qc.png"
+        arr      = deriv_grids[stem]
+        tif_path = out_dir / f"{stem}.tif"
+        png_path = qc_dir  / f"{stem}_qc.png"
 
         save_geotiff(arr, tif_path, ref_profile)
-        save_qc_png(arr, stem, title, png_path)
+        save_qc_png(
+            arr, stem, title, png_path,
+            source_label=source_stem,
+            res_m=dx,
+        )
 
         valid = arr[~np.isnan(arr)]
         summary_rows.append({
             "derivative": stem,
-            "min":   float(valid.min()),
-            "max":   float(valid.max()),
-            "mean":  float(valid.mean()),
-            "std":   float(valid.std()),
+            "min":    float(valid.min()),
+            "max":    float(valid.max()),
+            "mean":   float(valid.mean()),
+            "std":    float(valid.std()),
             "n_valid": len(valid),
         })
-        log.info(f"  ✅ {stem}.tif")
+        log.info(f"  OK {stem}.tif")
 
-    # ── Summary table ─────────────────────────────────────────────────────────
-    log.info("\n─── Summary Statistics ───")
+    # ── Summary table --------------------------------------------------------
+    log.info("\n--- Summary Statistics ---")
     log.info(f"{'Derivative':<22} {'Min':>12} {'Max':>12} {'Mean':>12} {'Std':>12}")
-    log.info("─" * 72)
+    log.info("-" * 72)
     for r in summary_rows:
         log.info(
             f"  {r['derivative']:<20} "
@@ -392,9 +455,9 @@ def main():
             f"{r['std']:>12.4g}"
         )
 
-    log.info(f"\n✅ All derivatives written → {MAG_DERIVATIVES_DIR}")
-    log.info(f"   QC plots            → {QC_DIR}")
-    log.info("   Run next: python pipeline/02_preprocessing/extract_features.py")
+    log.info(f"\nAll derivatives written  : {out_dir}")
+    log.info(f"QC plots                 : {qc_dir}")
+    log.info("Run next: python pipeline/02_preprocessing/extract_features.py")
 
 
 if __name__ == "__main__":
