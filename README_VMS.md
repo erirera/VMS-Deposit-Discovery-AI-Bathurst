@@ -14,12 +14,12 @@
 
 ### Reference:
 
-Goodfellow, W.D., and McCutcheon, S.R., 2003. Massive Sulphide Deposits of the Bathurst Mining Camp, New Brunswick, Canada. Economic Geology Monograph 11.
-McCutcheon, S.R., and Walker, J.A., 2020. Great Mining Camps of Canada 8. The Bathurst Mining Camp, New Brunswick, Part 2. Geoscience Canada, 47, 143–166.
-Rodriguez-Galiano, V., Sanchez-Castillo, M., Chica-Olmo, M., and Chica-Rivas, M., 2015. Machine learning predictive models for mineral prospectivity: an evaluation of neural networks, random forest, regression trees and support vector machines. Ore Geology Reviews, 71, 804–818.
-Carranza, E.J.M., and Laborte, A.G., 2015b. Random forest predictive modeling of mineral prospectivity with small number of prospects and data with missing values in Abra (Philippines). Computers & Geosciences, 74, 60–70.
-Zuo, R., Xiong, Y., Wang, Z., Wang, J., and Kreuzer, O.P., 2023. A new generation of artificial intelligence algorithms for mineral prospectivity mapping. Natural Resources Research, 32(5), 1859–1869.
-Parsa, M., Lentz, D.R., and Walker, J.A., 2023. Predictive modeling of prospectivity for VHMS mineral deposits, northeastern Bathurst Mining Camp, NB, Canada, using an ensemble regularization technique. Natural Resources Research, 32, 19–36. ✨
+1. Goodfellow, W.D., and McCutcheon, S.R., 2003. Massive Sulphide Deposits of the Bathurst Mining Camp, New Brunswick, Canada. Economic Geology Monograph 11.
+2. McCutcheon, S.R., and Walker, J.A., 2020. Great Mining Camps of Canada 8. The Bathurst Mining Camp, New Brunswick, Part 2. Geoscience Canada, 47, 143–166.
+3. Rodriguez-Galiano, V., Sanchez-Castillo, M., Chica-Olmo, M., and Chica-Rivas, M., 2015. Machine learning predictive models for mineral prospectivity: an evaluation of neural networks, random forest, regression trees and support vector machines. Ore Geology Reviews, 71, 804–818.
+4. Carranza, E.J.M., and Laborte, A.G., 2015b. Random forest predictive modeling of mineral prospectivity with small number of prospects and data with missing values in Abra (Philippines). Computers & Geosciences, 74, 60–70.
+5. Zuo, R., Xiong, Y., Wang, Z., Wang, J., and Kreuzer, O.P., 2023. A new generation of artificial intelligence algorithms for mineral prospectivity mapping. Natural Resources Research, 32(5), 1859–1869.
+6. Parsa, M., Lentz, D.R., and Walker, J.A., 2023. Predictive modeling of prospectivity for VHMS mineral deposits, northeastern Bathurst Mining Camp, NB, Canada, using an ensemble regularization technique. Natural Resources Research, 32, 19–36. ✨
 
 ---
 
