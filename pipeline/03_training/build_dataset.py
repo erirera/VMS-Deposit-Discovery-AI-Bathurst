@@ -48,7 +48,7 @@ DATASET_DIR = PROCESSED_DIR / "training_dataset"
 DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
 # Maximum fraction of nulls allowed per feature before dropping the column
-MAX_NULL_FRACTION = 0.50
+MAX_NULL_FRACTION = 0.75
 
 
 def load_and_filter(path: Path) -> pd.DataFrame:

@@ -48,11 +48,11 @@ log = logging.getLogger(__name__)
 EPSILON = 1e-6
 
 # Expected column names for raw features (must match raster file stems)
-MAG_TMI  = "mag_tmi_nb_2013"
-MAG_FVD  = "mag_fvd_nb_2013"
-RAD_K    = "rad_k"
-RAD_TH   = "rad_th"
-RAD_U    = "rad_u"
+MAG_TMI  = "mag_rmi_bmc_combined1"
+MAG_FVD  = "mag_rmi_fvd_bmc"
+RAD_K    = "rad_k_bmc"
+RAD_TH   = "rad_th_bmc"
+RAD_U    = "rad_u_bmc"
 
 GEOCHEM_COLS = ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]
 

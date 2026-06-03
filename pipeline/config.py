@@ -19,13 +19,15 @@ PROCESSED_DIR       = DATA_DIR / "processed"
 RASTERS_DIR         = RAW_DIR / "rasters"              # Geophysical grids
 LABELS_DIR          = RAW_DIR / "labels"               # Deposit & barren locations
 MAG_DERIVATIVES_DIR = PROCESSED_DIR / "mag_derivatives" # Computed magnetic derivatives
+GRAV_DERIVATIVES_DIR = PROCESSED_DIR / "grav_derivatives"   # Computed gravity derivatives
+RAD_DERIVATIVES_DIR = PROCESSED_DIR / "rad_derivatives"     # Computed radiometric derivatives
 MODELS_DIR          = REPO_ROOT / "models"             # Saved .joblib model files
 OUTPUTS_DIR         = REPO_ROOT / "outputs"            # Maps, figures, reports
 NOTEBOOKS_DIR       = REPO_ROOT / "pipeline" / "notebooks"
 
 # Create directories if they don't exist
 for _dir in [RAW_DIR, PROCESSED_DIR, RASTERS_DIR, LABELS_DIR,
-             MAG_DERIVATIVES_DIR, MODELS_DIR, OUTPUTS_DIR]:
+             MAG_DERIVATIVES_DIR, GRAV_DERIVATIVES_DIR, RAD_DERIVATIVES_DIR, MODELS_DIR, OUTPUTS_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)
 
 # ── Coordinate Reference Systems ──────────────────────────────────────────────
@@ -57,11 +59,23 @@ RASTER_FEATURES = [
     "mag_rmi_tdr_bmc",  # Tilt Derivative
     "mag_rmi_thdr_bmc", # Tilt Horizontal Gradient
     "mag_rmi_svd_bmc",  # Second Vertical Derivative
-    # ── Other geophysical layers ──
-    "rad_k",            # Radiometric potassium %
-    "rad_th",           # Thorium (ppm)
-    "rad_u",            # Uranium (ppm)
-    "rad_k_th_ratio",   # K/Th ratio (derived)
+    # -- Gravity derivatives (computed by compute_grav_derivatives.py) --
+    "gra_ggr_hgm_bmc",   # Horizontal Gradient Magnitude
+    "gra_ggr_tdr_bmc",   # Tilt Derivative
+    "gra_ggr_fvd_bmc",   # First Vertical Derivative
+    "gra_ggr_svd_bmc",   # Second Vertical Derivative
+    "gra_ggr_as_bmc",    # Analytic Signal Amplitude
+    "gra_ggr_uc500_bmc", # Upward Continued 500 m
+    "gra_ggr_res_bmc",   # Residual Bouguer
+    # -- Radiometrics (computed by compute_rad_derivatives.py) --
+    "rad_k_bmc",        # Radiometric potassium %
+    "rad_th_bmc",       # Thorium (ppm)
+    "rad_u_bmc",        # Uranium (ppm)
+    "rad_k_th_bmc",     # K/Th ratio (derived)
+    "rad_u_th_bmc",     # U/Th ratio (derived)
+    "rad_th_k_bmc",     # Th/K ratio (derived)
+    "rad_u_k_bmc",      # U/K ratio (derived)
+    "rad_dose_bmc",     # Dose rate (derived)
     "em_conductivity",  # Apparent conductivity (EM)
     "gravity_bouguer",  # Bouguer anomaly
 ]
