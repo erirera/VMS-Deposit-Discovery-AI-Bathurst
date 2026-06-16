@@ -78,6 +78,25 @@ RASTER_FEATURES = [
     "rad_dose_bmc",     # Dose rate (derived)
     "em_conductivity",  # Apparent conductivity (EM)
     "gravity_bouguer",  # Bouguer anomaly
+
+    # -- Till geochemistry IDW raster surfaces (from interpolate_geochem.py) --
+    "geochem_ag_ppm_idw",   # Silver (ppm)
+    "geochem_as_ppm_idw",   # Arsenic (ppm)
+    "geochem_ba_ppm_idw",   # Barium (ppm)
+    "geochem_bi_ppm_idw",   # Bismuth (ppm)
+    "geochem_cd_ppm_idw",   # Cadmium (ppm)
+    "geochem_co_ppm_idw",   # Cobalt (ppm)
+    "geochem_cu_ppm_idw",   # Copper (ppm)
+    "geochem_fe_ppm_idw",   # Iron (ppm)
+    "geochem_in_ppm_idw",   # Indium (ppm)
+    "geochem_mn_ppm_idw",   # Manganese (ppm)
+    "geochem_mo_ppm_idw",   # Molybdenum (ppm)
+    "geochem_ni_ppm_idw",   # Nickel (ppm)
+    "geochem_pb_ppm_idw",   # Lead (ppm)
+    "geochem_sb_ppm_idw",   # Antimony (ppm)
+    "geochem_sn_ppm_idw",   # Tin (ppm)
+    "geochem_tl_ppm_idw",   # Thallium (ppm)
+    "geochem_zn_ppm_idw",   # Zinc (ppm)
 ]
 
 # Till geochemistry pathfinder elements
