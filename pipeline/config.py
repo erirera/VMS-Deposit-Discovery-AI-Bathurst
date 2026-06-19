@@ -76,7 +76,6 @@ RASTER_FEATURES = [
     "rad_th_k_bmc",     # Th/K ratio (derived)
     "rad_u_k_bmc",      # U/K ratio (derived)
     "rad_dose_bmc",     # Dose rate (derived)
-    "em_conductivity",  # Apparent conductivity (EM)
     "gravity_bouguer",  # Bouguer anomaly
 
     # -- Till geochemistry IDW raster surfaces (from interpolate_geochem.py) --

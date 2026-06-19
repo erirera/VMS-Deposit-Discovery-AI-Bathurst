@@ -56,6 +56,20 @@ RAD_U    = "rad_u_bmc"
 
 GEOCHEM_COLS = ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]
 
+# IDW-interpolated geochem rasters (all 17 elements, 0% null)
+IDW_GEOCHEM_COLS = [
+    "geochem_ag_ppm_idw", "geochem_as_ppm_idw", "geochem_ba_ppm_idw",
+    "geochem_bi_ppm_idw", "geochem_cd_ppm_idw", "geochem_co_ppm_idw",
+    "geochem_cu_ppm_idw", "geochem_fe_ppm_idw", "geochem_in_ppm_idw",
+    "geochem_mn_ppm_idw", "geochem_mo_ppm_idw", "geochem_ni_ppm_idw",
+    "geochem_pb_ppm_idw", "geochem_sb_ppm_idw", "geochem_sn_ppm_idw",
+    "geochem_tl_ppm_idw", "geochem_zn_ppm_idw",
+]
+
+# VMS pathfinder elements from IDW surfaces (for MEAS score)
+IDW_MEAS_COLS = ["geochem_cu_ppm_idw", "geochem_zn_ppm_idw",
+                 "geochem_pb_ppm_idw", "geochem_as_ppm_idw"]
+
 
 # ── Magnetics Derived Features ─────────────────────────────────────────────────
 
@@ -118,22 +132,63 @@ def log_transform(df: pd.DataFrame, cols: list) -> pd.DataFrame:
     return df
 
 
+# VMS pathfinder weights for MEAS score.
+# Keys are IDW column suffixes (geochem_<key>_idw).
+# Geologically-informed weighting after Galley et al. (2007) and
+# Franklin et al. (2005) VMS deposit models.
+VMS_PATHFINDER_WEIGHTS = {
+    # Core ore metals (weight 3)
+    "cu_ppm": 3, "zn_ppm": 3, "pb_ppm": 3,
+    # Proximal chalcophile pathfinders (weight 2)
+    "as_ppm": 2, "sb_ppm": 2, "bi_ppm": 2, "ag_ppm": 2,
+    "in_ppm": 2, "cd_ppm": 2, "sn_ppm": 2,
+    # Alteration / exhalite indicators (weight 1)
+    "co_ppm": 1, "ni_ppm": 1, "ba_ppm": 1,
+    "fe_ppm": 1, "mn_ppm": 1, "mo_ppm": 1, "tl_ppm": 1,
+}
+
+
 def compute_multi_element_score(df: pd.DataFrame) -> pd.Series:
     """
-    Multi-element anomaly score (MEAS).
-    Standardises Zn, Pb, Cu, As individually then sums Z-scores.
-    High values → geochemical signature consistent with VMS pathfinder train.
+    Multi-element anomaly score (MEAS) — full 17-element weighted VMS score.
+
+    For each element with data, compute Z-score on the log10-transformed IDW
+    surface (or raw IDW surface if log not available), multiply by geological
+    weight, and sum.  Final score is normalised by total weight of contributing
+    elements so it remains comparable regardless of data availability.
+
+    High values → geochemical signature consistent with VMS deposit style.
+
+    References
+    ----------
+    Galley et al. (2007) VMS deposit model, GSC Economic Geology Report 6.
+    Franklin et al. (2005) Geological characteristics of VMS deposits.
     """
     score = pd.Series(0.0, index=df.index)
-    contributing = 0
-    for col in ["zn_ppm", "pb_ppm", "cu_ppm", "as_ppm"]:
-        if col in df.columns and df[col].notna().any():
-            z = (df[col] - df[col].mean()) / (df[col].std() + EPSILON)
-            score += z.fillna(0)
-            contributing += 1
-    if contributing == 0:
+    total_weight = 0.0
+
+    for suffix, weight in VMS_PATHFINDER_WEIGHTS.items():
+        idw_col     = f"geochem_{suffix}_idw"
+        log_idw_col = f"log_geochem_{suffix}_idw"
+        legacy_col  = suffix  # e.g. "cu_ppm"
+
+        # Prefer log-transformed IDW (best), then raw IDW, then legacy col
+        if log_idw_col in df.columns and df[log_idw_col].notna().any():
+            col = log_idw_col
+        elif idw_col in df.columns and df[idw_col].notna().any():
+            col = idw_col
+        elif legacy_col in df.columns and df[legacy_col].notna().any():
+            col = legacy_col
+        else:
+            continue  # element not available
+
+        z = (df[col] - df[col].mean()) / (df[col].std() + EPSILON)
+        score += weight * z.fillna(0)
+        total_weight += weight
+
+    if total_weight == 0:
         return pd.Series(np.nan, index=df.index)
-    return score / contributing   # Normalise by number of contributing elements
+    return score / total_weight   # Normalise by number of contributing elements
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -198,9 +253,22 @@ def main():
         log.info("\n[Geochemistry] Log-transforming pathfinder elements ...")
         df = log_transform(df, GEOCHEM_COLS)
 
+    # Log-transform IDW raster geochem columns -- log10(x+eps) to handle zeros
+    idw_present = [c for c in IDW_GEOCHEM_COLS if c in df.columns and df[c].notna().any()]
+    if idw_present:
+        log.info("  Log-transforming %d IDW geochem raster columns ...", len(idw_present))
+        for col in idw_present:
+            raw = df[col].values.astype(float)
+            df[f"log_{col}"] = np.log10(np.clip(raw, EPSILON, None))
+        log.info("  ✅ %d IDW log-transforms added", len(idw_present))
+
+    if geochem_available or idw_present:
         log.info("  Computing multi-element anomaly score (MEAS) ...")
         df["geochem_meas"] = compute_multi_element_score(df)
-        log.info("  ✅ geochem_meas")
+        if df["geochem_meas"].notna().any():
+            log.info("  ✅ geochem_meas")
+        else:
+            log.warning("  geochem_meas is all-NaN (no valid MEAS source cols)")
     else:
         log.warning("  No geochemistry columns found. Skipping geochem features.")
         df["geochem_meas"] = np.nan

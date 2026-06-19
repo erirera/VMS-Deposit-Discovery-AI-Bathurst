@@ -150,8 +150,16 @@ def rasterise_idw(
     resolution: float = RESOLUTION,
     power: float = IDW_POWER_DEFAULT,
     k: int = IDW_NEIGHBOURS_DEFAULT,
+    snap_bounds: tuple | None = None,
 ) -> None:
-    """Interpolate a point GeoDataFrame using IDW and write a GeoTIFF."""
+    """Interpolate a point GeoDataFrame using IDW and write a GeoTIFF.
+
+    Parameters
+    ----------
+    snap_bounds : optional (xmin, ymin, xmax, ymax) tuple to force the output
+                  grid extent, overriding the point-cloud bounding box.
+                  Use this to ensure the raster covers the full study area.
+    """
     coords = np.column_stack([gdf.geometry.x.values, gdf.geometry.y.values])
     values = gdf["VALUE"].values.astype(np.float64)
 
@@ -161,10 +169,14 @@ def rasterise_idw(
         return
     coords, values = coords[valid], values[valid]
 
-    xmin = coords[:, 0].min()
-    ymin = coords[:, 1].min()
-    xmax = coords[:, 0].max()
-    ymax = coords[:, 1].max()
+    if snap_bounds is not None:
+        xmin, ymin, xmax, ymax = snap_bounds
+        log.info("    Extent snapped to reference bounds.")
+    else:
+        xmin = coords[:, 0].min()
+        ymin = coords[:, 1].min()
+        xmax = coords[:, 0].max()
+        ymax = coords[:, 1].max()
     ncols = int(np.ceil((xmax - xmin) / resolution)) + 1
     nrows = int(np.ceil((ymax - ymin) / resolution)) + 1
 
@@ -199,6 +211,7 @@ def rasterise_kriging(
     resolution: float = RESOLUTION,
     variogram_model: str = "spherical",
     max_points: int = 500,
+    chunk_size: int = 25_000,
 ) -> None:
     """Interpolate a point GeoDataFrame using Ordinary Kriging and write a GeoTIFF.
 
@@ -208,6 +221,9 @@ def rasterise_kriging(
                       'spherical', 'exponential', 'hole-effect')
     max_points      : Maximum sample size for variogram fitting. Kriging is
                       O(N^3) so large datasets must be subsampled.
+    chunk_size      : Number of grid cells predicted per batch. Controls peak
+                      RAM usage: peak ~ chunk_size * max_points * 8 bytes.
+                      Default 25 000 -> ~100 MB per chunk at max_points=500.
     """
     try:
         from pykrige.ok import OrdinaryKriging
@@ -241,8 +257,8 @@ def rasterise_kriging(
     xs = np.arange(ncols) * resolution + xmin
     ys = np.arange(nrows) * resolution + ymin
 
-    log.info("    Grid     : %d cols x %d rows", ncols, nrows)
-    log.info("    Variogram: %s  (max_points=%d)", variogram_model, max_points)
+    log.info("    Grid     : %d cols x %d rows  (%d cells)", ncols, nrows, ncols * nrows)
+    log.info("    Variogram: %s  (max_points=%d  chunk=%d)", variogram_model, max_points, chunk_size)
 
     t0 = time.perf_counter()
     ok = OrdinaryKriging(
@@ -253,11 +269,30 @@ def rasterise_kriging(
         nlags=12,
         coordinates_type="euclidean",
     )
-    z, _ss = ok.execute("grid", xs, ys)
+
+    # --- Chunked prediction to avoid multi-GB allocations ---
+    # Build flat grid of (x, y) query points
+    gx, gy = np.meshgrid(xs, ys)          # shape (nrows, ncols) each
+    flat_x = gx.ravel()                    # shape (nrows*ncols,)
+    flat_y = gy.ravel()
+    n_cells = len(flat_x)
+    z_flat = np.empty(n_cells, dtype=np.float64)
+
+    n_chunks = int(np.ceil(n_cells / chunk_size))
+    for i in range(n_chunks):
+        s = i * chunk_size
+        e = min(s + chunk_size, n_cells)
+        z_chunk, _ = ok.execute("points", flat_x[s:e], flat_y[s:e])
+        z_flat[s:e] = z_chunk
+        if (i + 1) % 20 == 0 or (i + 1) == n_chunks:
+            log.info("      chunk %d/%d  (%.0f%%)", i + 1, n_chunks,
+                     100.0 * (i + 1) / n_chunks)
+
     log.info("    Kriging done in %.1f s", time.perf_counter() - t0)
 
-    # pykrige returns (nrows, ncols); flip vertically for raster convention
-    grid = np.flipud(z.data.astype(np.float32))
+    # Reshape, clip negatives (Kriging can predict slightly below 0), flip
+    grid = np.clip(z_flat.reshape(nrows, ncols), 0, None).astype(np.float32)
+    grid = np.flipud(grid)
     transform = from_bounds(
         xmin, ymin,
         xmin + ncols * resolution, ymin + nrows * resolution,
@@ -317,6 +352,8 @@ def parse_args() -> argparse.Namespace:
                    help="Max sample size for Kriging variogram fit (default: 500)")
     p.add_argument("--resolution", type=float, default=RESOLUTION,
                    help=f"Output raster resolution in metres (default: {RESOLUTION})")
+    p.add_argument("--snap-to", default=None, metavar="RASTER",
+                   help="Path to a reference GeoTIFF; output grid will match its extent.")
     return p.parse_args()
 
 
@@ -340,6 +377,35 @@ def main() -> None:
     log.info("   Elements  : %d", len(work_list))
     log.info("   Output dir: %s", OUT_DIR)
     log.info("=" * 60)
+
+    # Resolve snap bounds from reference raster (if provided)
+    snap_bounds = None
+    if args.snap_to:
+        import rasterio as _rio
+        with _rio.open(args.snap_to) as _ref:
+            b = _ref.bounds
+            snap_bounds = (b.left, b.bottom, b.right, b.top)
+        log.info("Snap bounds from %s: %s", args.snap_to, snap_bounds)
+    else:
+        # Auto-detect: derive extent from all label GPKGs so IDW covers
+        # every label point (IDW extrapolates gracefully outside data hull).
+        import geopandas as _gpd
+        _labels_dir = REPO_ROOT / "data" / "raw" / "labels"
+        _label_gpkgs = list(_labels_dir.glob("*.gpkg"))
+        if _label_gpkgs:
+            _bounds = [_gpd.read_file(str(p), engine="pyogrio")
+                       .to_crs(CRS_TARGET).total_bounds
+                       for p in _label_gpkgs]
+            _buf = 5_000  # 5 km buffer around label extent
+            _xmin = min(b[0] for b in _bounds) - _buf
+            _ymin = min(b[1] for b in _bounds) - _buf
+            _xmax = max(b[2] for b in _bounds) + _buf
+            _ymax = max(b[3] for b in _bounds) + _buf
+            snap_bounds = (_xmin, _ymin, _xmax, _ymax)
+            log.info("Auto-snapped extent to label union + 5 km buffer: "
+                     "%.0f %.0f %.0f %.0f", *snap_bounds)
+        else:
+            log.warning("No label GPKGs found — using point-cloud extent.")
 
     skipped = processed = failed = 0
 
@@ -376,7 +442,8 @@ def main() -> None:
                 rasterise_idw(gdf, out_path,
                               resolution=args.resolution,
                               power=args.idw_power,
-                              k=args.idw_neighbours)
+                              k=args.idw_neighbours,
+                              snap_bounds=snap_bounds)
             else:
                 rasterise_kriging(gdf, out_path,
                                   resolution=args.resolution,
