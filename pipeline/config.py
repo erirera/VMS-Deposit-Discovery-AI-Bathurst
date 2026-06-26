@@ -96,6 +96,26 @@ RASTER_FEATURES = [
     "geochem_sn_ppm_idw",   # Tin (ppm)
     "geochem_tl_ppm_idw",   # Thallium (ppm)
     "geochem_zn_ppm_idw",   # Zinc (ppm)
+
+    # -- Till geochemistry PCA / FA scores (IDW) --
+    "geochem_pca_pc1_idw",
+    "geochem_pca_pc2_idw",
+    "geochem_pca_pc3_idw",
+    "geochem_pca_pc4_idw",
+    "geochem_fa_factor1_idw",
+    "geochem_fa_factor2_idw",
+    "geochem_fa_factor3_idw",
+    "geochem_fa_factor4_idw",
+
+    # -- Till geochemistry PCA / FA scores (Kriging) --
+    "geochem_pca_pc1_kriging",
+    "geochem_pca_pc2_kriging",
+    "geochem_pca_pc3_kriging",
+    "geochem_pca_pc4_kriging",
+    "geochem_fa_factor1_kriging",
+    "geochem_fa_factor2_kriging",
+    "geochem_fa_factor3_kriging",
+    "geochem_fa_factor4_kriging",
 ]
 
 # Till geochemistry pathfinder elements

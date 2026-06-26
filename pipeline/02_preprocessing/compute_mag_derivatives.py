@@ -91,47 +91,70 @@ DERIVATIVES = {
 
 # ── Step 1 — Reprojection ─────────────────────────────────────────────────────
 
-def reproject_to_target(src_path: Path, dst_path: Path) -> None:
-    """Reproject source raster to EPSG:2953 at TARGET_RESOLUTION_M."""
+def reproject_and_save_array(
+    arr: np.ndarray,
+    src_profile: dict,
+    src_bounds,
+    dst_path: Path,
+    dst_resolution: float,
+) -> np.ndarray:
+    """
+    Reproject a native-grid array to target CRS (EPSG:2953) at dst_resolution,
+    save it as a single-band GeoTIFF, and return the reprojected array.
+    """
     dst_path.parent.mkdir(parents=True, exist_ok=True)
-    with rasterio.open(src_path) as src:
-        log.info(f"  Source CRS       : {src.crs}")
-        log.info(f"  Source shape     : {src.height} × {src.width}")
-        transform, width, height = calculate_default_transform(
-            src.crs, CRS_TARGET,
-            src.width, src.height, *src.bounds,
-            resolution=MAG_DERIVATIVE_RESOLUTION_M,
-        )
-        meta = src.meta.copy()
-        meta.update({
-            "crs": CRS_TARGET,
-            "transform": transform,
-            "width": width,
-            "height": height,
-            "nodata": NODATA_VALUE,
-            "driver": "GTiff",
-            "dtype": "float32",
-            "compress": "lzw",
-            "tiled": True,
-            "blockxsize": 256,
-            "blockysize": 256,
-            "count": 1,
-        })
-        with rasterio.open(dst_path, "w", **meta) as dst:
-            reproject(
-                source=rasterio.band(src, 1),
-                destination=rasterio.band(dst, 1),
-                src_transform=src.transform,
-                src_crs=src.crs,
-                dst_transform=transform,
-                dst_crs=CRS_TARGET,
-                resampling=Resampling.bilinear,
-            )
-    log.info(f"  Output shape     : {height} × {width}")
-    log.info(f"  ✅ Reprojected → {dst_path.name}")
+    src_height, src_width = arr.shape
 
+    # Calculate transform for target CRS and resolution
+    transform, width, height = calculate_default_transform(
+        src_profile["crs"],
+        CRS_TARGET,
+        src_width,
+        src_height,
+        *src_bounds,
+        resolution=dst_resolution,
+    )
 
-# ── Step 2 — FFT-based vertical derivative ────────────────────────────────────
+    profile = src_profile.copy()
+    profile.update({
+        "crs": CRS_TARGET,
+        "transform": transform,
+        "width": width,
+        "height": height,
+        "nodata": NODATA_VALUE,
+        "driver": "GTiff",
+        "dtype": "float32",
+        "compress": "lzw",
+        "tiled": True,
+        "blockxsize": 256,
+        "blockysize": 256,
+        "count": 1,
+    })
+
+    # Prepare array: fill NaNs with nodata for projection
+    src_filled = np.where(np.isnan(arr), NODATA_VALUE, arr).astype(np.float32)
+    dst_arr = np.empty((height, width), dtype=np.float32)
+
+    reproject(
+        source=src_filled,
+        destination=dst_arr,
+        src_transform=src_profile["transform"],
+        src_crs=src_profile["crs"],
+        dst_transform=transform,
+        dst_crs=CRS_TARGET,
+        resampling=Resampling.bilinear,
+        src_nodata=NODATA_VALUE,
+        dst_nodata=NODATA_VALUE,
+    )
+
+    # Write to file
+    with rasterio.open(dst_path, "w", **profile) as dst:
+        dst.write(dst_arr, 1)
+
+    # Return array with NaNs restored
+    dst_arr_nan = np.where(dst_arr == NODATA_VALUE, np.nan, dst_arr).astype(np.float64)
+    return dst_arr_nan
+
 
 def _pad_to_power_of_two(arr: np.ndarray):
     """
@@ -385,65 +408,86 @@ def main():
     log.info("=== Magnetic Derivative Computation -- BMC ===")
     log.info(f"Source  : {source_raster}")
     log.info(f"Output  : {out_dir}")
-    log.info(f"Res     : {MAG_DERIVATIVE_RESOLUTION_M} m")
+    log.info(f"Res     : {MAG_DERIVATIVE_RESOLUTION_M} m (final reprojected)")
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Step 1: Reproject ----------------------------------------------------
-    if reproj_tif.exists():
-        log.info(f"\n[1/3] Reprojected raster already exists -- skipping.")
-        log.info(f"      ({reproj_tif.name})")
-    else:
-        log.info(f"\n[1/3] Reprojecting to EPSG:2953 at {MAG_DERIVATIVE_RESOLUTION_M} m ...")
-        reproject_to_target(source_raster, reproj_tif)
-
-    # ── Step 2: Load ---------------------------------------------------------
-    log.info("\n[2/3] Loading reprojected grid ...")
-    with rasterio.open(reproj_tif) as src:
-        ref_profile = src.profile.copy()
-        raw    = src.read(1).astype(np.float64)
+    # ── Step 1: Load Raw Native Grid ------------------------------------------
+    log.info("\n[1/3] Loading raw native grid ...")
+    with rasterio.open(source_raster) as src:
+        src_profile = src.profile.copy()
+        src_bounds = src.bounds
+        raw = src.read(1).astype(np.float64)
         nodata = src.nodata if src.nodata is not None else NODATA_VALUE
-        dx     = src.res[0]
+        dx = src.res[0]
 
     grid    = np.where(raw == nodata, np.nan, raw).astype(np.float64)
     n_valid = int(np.sum(~np.isnan(grid)))
     log.info(f"  Grid shape : {grid.shape[0]} x {grid.shape[1]}")
-    log.info(f"  Pixel size : {dx:.1f} m")
+    log.info(f"  Pixel size : {dx:.2f} m (native)")
     log.info(f"  Valid cells: {n_valid:,} / {grid.size:,}")
 
-    # ── Step 3: Compute -------------------------------------------------------
-    log.info("\n[3/3] Computing derivatives ...")
+    # ── Step 2: Compute on Native Grid ----------------------------------------
+    log.info("\n[2/3] Computing derivatives on native grid ...")
     deriv_grids = compute_all_derivatives(grid, dx)
 
-    # ── Write outputs --------------------------------------------------------
+    # ── Step 3: Reproject and Save --------------------------------------------
+    log.info("\n[3/3] Reprojecting and saving to EPSG:2953 at 50 m ...")
+    
+    # Save reprojected raw grid
+    log.info(f"  Reprojecting raw grid to {reproj_tif.name} ...")
+    reproj_raw = reproject_and_save_array(
+        grid, src_profile, src_bounds,
+        reproj_tif, MAG_DERIVATIVE_RESOLUTION_M
+    )
+    # Also save raw grid to rasters_reprojected
+    raw_reproj_path = PROCESSED_DIR / "rasters_reprojected" / f"{source_stem}_epsg2953_{MAG_DERIVATIVE_RESOLUTION_M}m.tif"
+    reproject_and_save_array(
+        grid, src_profile, src_bounds,
+        raw_reproj_path, MAG_DERIVATIVE_RESOLUTION_M
+    )
+
     log.info("\n--- Writing GeoTIFFs + QC PNGs ---")
     summary_rows = []
 
     for stem, title in tqdm(DERIVATIVES.items(), desc="Writing outputs"):
-        arr      = deriv_grids[stem]
+        native_arr = deriv_grids[stem]
         tif_path = out_dir / f"{stem}.tif"
         png_path = qc_dir  / f"{stem}_qc.png"
 
-        save_geotiff(arr, tif_path, ref_profile)
-        save_qc_png(
-            arr, stem, title, png_path,
-            source_label=source_stem,
-            res_m=dx,
+        # Reproject and save to out_dir
+        reproj_arr = reproject_and_save_array(
+            native_arr, src_profile, src_bounds,
+            tif_path, MAG_DERIVATIVE_RESOLUTION_M
         )
 
-        valid = arr[~np.isnan(arr)]
+        # Also save to rasters_reprojected (without epsg suffix for derivatives)
+        reproject_and_save_array(
+            native_arr, src_profile, src_bounds,
+            PROCESSED_DIR / "rasters_reprojected" / f"{stem}.tif",
+            MAG_DERIVATIVE_RESOLUTION_M
+        )
+
+        # Save QC PNG using the reprojected 50m array
+        save_qc_png(
+            reproj_arr, stem, title, png_path,
+            source_label=source_stem,
+            res_m=MAG_DERIVATIVE_RESOLUTION_M,
+        )
+
+        valid = reproj_arr[~np.isnan(reproj_arr)]
         summary_rows.append({
             "derivative": stem,
-            "min":    float(valid.min()),
-            "max":    float(valid.max()),
-            "mean":   float(valid.mean()),
-            "std":    float(valid.std()),
+            "min":    float(valid.min()) if len(valid) > 0 else np.nan,
+            "max":    float(valid.max()) if len(valid) > 0 else np.nan,
+            "mean":   float(valid.mean()) if len(valid) > 0 else np.nan,
+            "std":    float(valid.std()) if len(valid) > 0 else np.nan,
             "n_valid": len(valid),
         })
         log.info(f"  OK {stem}.tif")
 
     # ── Summary table --------------------------------------------------------
-    log.info("\n--- Summary Statistics ---")
+    log.info("\n--- Summary Statistics (50m Reprojected) ---")
     log.info(f"{'Derivative':<22} {'Min':>12} {'Max':>12} {'Mean':>12} {'Std':>12}")
     log.info("-" * 72)
     for r in summary_rows:

@@ -29,6 +29,9 @@ from pathlib import Path
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
+import random
+import numpy as np
+import rasterio
 
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
@@ -196,6 +199,61 @@ def build_barren_geodataframe() -> gpd.GeoDataFrame:
     return gdf
 
 
+
+def generate_pseudo_absences(vms_gdf, count=125, exclusion_buffer_m=3000, seed=42):
+    """Generate random pseudo-absences within the active geophysical raster footprint."""
+    random.seed(seed)
+    
+    # Load master raster to get bounds and mask
+    raster_path = Path("data/processed/rasters_reprojected/mag_rmi_bmc_combined1_epsg2953_50m.tif")
+    if not raster_path.exists():
+        # Fallback to any reprojected raster
+        reproj_dir = Path("data/processed/rasters_reprojected")
+        tifs = list(reproj_dir.glob("*.tif"))
+        if not tifs:
+            raise FileNotFoundError("No reprojected rasters found in data/processed/rasters_reprojected. Run reproject_grids.py first.")
+        raster_path = tifs[0]
+        
+    log.info(f"  Generating pseudo-absences using raster footprint: {raster_path.name}")
+    
+    with rasterio.open(raster_path) as src:
+        bounds = src.bounds
+        nodata = src.nodata if src.nodata is not None else -9999
+        
+        pseudo_absences = []
+        attempts = 0
+        max_attempts = 50000
+        
+        while len(pseudo_absences) < count and attempts < max_attempts:
+            attempts += 1
+            # Generate random point in bounds
+            x = random.uniform(bounds.left, bounds.right)
+            y = random.uniform(bounds.bottom, bounds.top)
+            point = Point(x, y)
+            
+            # Check distance to VMS deposits
+            min_dist = vms_gdf.distance(point).min()
+            if min_dist < exclusion_buffer_m:
+                continue
+                
+            # Check if point falls on valid data (non-NoData) in the raster
+            sampled = list(src.sample([(x, y)]))
+            val = sampled[0][0]
+            if val == nodata or np.isnan(val) or val <= 0:  # Also guard against zero/negative background values in mask
+                continue
+                
+            pseudo_absences.append({
+                "hole_id": f"PSA_{len(pseudo_absences) + 1:03d}",
+                "depth_m": 0.0,
+                "label": 0,
+                "source": "pseudo_absence",
+                "geometry": point
+            })
+            
+    log.info(f"  Generated {len(pseudo_absences)} pseudo-absence labels after {attempts} attempts")
+    return gpd.GeoDataFrame(pseudo_absences, crs=src.crs)
+
+
 def main():
     log.info("═══ VMS Label Construction ═══")
     LABELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -212,8 +270,31 @@ def main():
     log.info(f"  ✅ Saved → {VMS_LABELS_GPKG}")
 
     # ── Negative labels ──────────────────────────────────────────────────────
-    log.info("\nBuilding negative labels (barren drill holes) ...")
-    barren_gdf = build_barren_geodataframe()
+    log.info("\nBuilding hybrid negative labels (125 barren holes + 125 pseudo-absences) ...")
+    
+    # 1. Sample 125 barren drill holes
+    random.seed(42)
+    sampled_barren_holes = random.sample(BARREN_HOLES, 125)
+    
+    records = []
+    for hole_id, lon, lat, depth_m in sampled_barren_holes:
+        records.append({
+            "hole_id": hole_id,
+            "depth_m": depth_m,
+            "label": 0,
+            "source": "barren_hole",
+            "geometry": Point(lon, lat)
+        })
+    barren_drill_gdf = gpd.GeoDataFrame(records, crs=CRS_SOURCE).to_crs(CRS_TARGET)
+    log.info(f"  Sampled {len(barren_drill_gdf)} barren drill holes")
+    
+    # 2. Generate 125 pseudo-absences (at least 3km away from VMS deposits)
+    psa_gdf = generate_pseudo_absences(vms_gdf, count=125, exclusion_buffer_m=3000, seed=42)
+    
+    # 3. Combine both negative sources
+    combined_neg_df = pd.concat([barren_drill_gdf, psa_gdf], ignore_index=True)
+    barren_gdf = gpd.GeoDataFrame(combined_neg_df, crs=CRS_TARGET)
+    
     barren_gdf["buffer_geom_wkt"] = barren_gdf.geometry.buffer(POSITIVE_BUFFER_M).to_wkt()
 
     barren_gdf.to_file(BARREN_LABELS_GPKG, driver="GPKG", layer="barren_holes")

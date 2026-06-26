@@ -172,7 +172,7 @@ def main():
     log.info("\n[Spatial Cross-Validation Blocks]")
     # Note: spatial blocks are assigned to original (pre-SMOTE) points only
     # SMOTE-generated points inherit the fold of their nearest real neighbour
-    spatial_folds = assign_spatial_blocks(df_feat, n_blocks=N_SPATIAL_FOLDS)
+    spatial_folds = assign_spatial_blocks(df, n_blocks=N_SPATIAL_FOLDS)
 
     # ── Scale ─────────────────────────────────────────────────────────────────
     scaler = StandardScaler()
