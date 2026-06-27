@@ -212,6 +212,7 @@ def rasterise_kriging(
     variogram_model: str = "spherical",
     max_points: int = 500,
     chunk_size: int = 25_000,
+    snap_bounds: tuple | None = None,
 ) -> None:
     """Interpolate a point GeoDataFrame using Ordinary Kriging and write a GeoTIFF.
 
@@ -247,10 +248,14 @@ def rasterise_kriging(
         coords, values = coords[idx], values[idx]
         log.info("    Subsampled to %d points for Kriging.", max_points)
 
-    xmin = coords[:, 0].min()
-    ymin = coords[:, 1].min()
-    xmax = coords[:, 0].max()
-    ymax = coords[:, 1].max()
+    if snap_bounds is not None:
+        xmin, ymin, xmax, ymax = snap_bounds
+        log.info("    Extent snapped to reference bounds.")
+    else:
+        xmin = coords[:, 0].min()
+        ymin = coords[:, 1].min()
+        xmax = coords[:, 0].max()
+        ymax = coords[:, 1].max()
     ncols = int(np.ceil((xmax - xmin) / resolution)) + 1
     nrows = int(np.ceil((ymax - ymin) / resolution)) + 1
 
@@ -448,7 +453,8 @@ def main() -> None:
                 rasterise_kriging(gdf, out_path,
                                   resolution=args.resolution,
                                   variogram_model=args.kriging_variogram,
-                                  max_points=args.kriging_max_points)
+                                  max_points=args.kriging_max_points,
+                                  snap_bounds=snap_bounds)
             processed += 1
         except Exception as exc:
             log.exception("   ERROR processing %s: %s", stem, exc)
