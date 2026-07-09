@@ -14,8 +14,6 @@ Output layout (per source)
     mag_rmi_thg_bmc.tif       Total Horizontal Gradient
     mag_rmi_as_bmc.tif        Analytic Signal Amplitude
     mag_rmi_tdr_bmc.tif       Tilt Derivative
-    mag_rmi_thdr_bmc.tif      Tilt Horizontal Gradient
-    mag_rmi_svd_bmc.tif       Second Vertical Derivative
     qc_plots/
       *.png                   Quick-look PNGs for every derivative
 
@@ -25,8 +23,6 @@ Derivatives computed
   2. THG  -- Total Horizontal Gradient       (numpy.gradient on 2-D grid)
   3. AS   -- Analytic Signal Amplitude       = sqrt(THG^2 + FVD^2)
   4. TDR  -- Tilt Derivative                 = arctan(FVD / THG)
-  5. THDR -- Tilt Horizontal Gradient        = horizontal gradient of TDR
-  6. SVD  -- Second Vertical Derivative      (FFT wavenumber domain)
 
 Usage
 -----
@@ -84,8 +80,7 @@ DERIVATIVES = {
     "mag_rmi_thg_bmc":  "Total Horizontal Gradient (THG)",
     "mag_rmi_as_bmc":   "Analytic Signal Amplitude (AS)",
     "mag_rmi_tdr_bmc":  "Tilt Derivative (TDR)",
-    "mag_rmi_thdr_bmc": "Tilt Horizontal Gradient (THDR)",
-    "mag_rmi_svd_bmc":  "Second Vertical Derivative (SVD)",
+
 }
 
 
@@ -239,9 +234,6 @@ def compute_all_derivatives(
     log.info("  Computing FVD  (FFT order-1 vertical derivative) ...")
     fvd = fft_vertical_derivative(grid, dx, order=1)
 
-    log.info("  Computing SVD  (FFT order-2 vertical derivative) ...")
-    svd = fft_vertical_derivative(grid, dx, order=2)
-
     log.info("  Computing THG  (total horizontal gradient) ...")
     dBdx, dBdy = horizontal_gradient(grid, dx)
     thg = np.sqrt(dBdx**2 + dBdy**2 + EPSILON).astype(np.float32)
@@ -252,17 +244,12 @@ def compute_all_derivatives(
     log.info("  Computing TDR  (tilt derivative) ...")
     tdr = np.arctan2(fvd, thg + EPSILON).astype(np.float32)
 
-    log.info("  Computing THDR (tilt horizontal gradient) ...")
-    tdr_dBdx, tdr_dBdy = horizontal_gradient(tdr, dx)
-    thdr = np.sqrt(tdr_dBdx**2 + tdr_dBdy**2 + EPSILON).astype(np.float32)
-
     return {
         "mag_rmi_fvd_bmc":  fvd,
         "mag_rmi_thg_bmc":  thg,
         "mag_rmi_as_bmc":   as_,
         "mag_rmi_tdr_bmc":  tdr,
-        "mag_rmi_thdr_bmc": thdr,
-        "mag_rmi_svd_bmc":  svd,
+
     }
 
 
@@ -312,7 +299,7 @@ def save_qc_png(
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Choose diverging colourmap for signed derivatives, sequential for positive
-    signed = "fvd" in name or "tdr" in name or "svd" in name
+    signed = "fvd" in name or "tdr" in name
     cmap = "RdBu_r" if signed else "magma"
 
     vmin, vmax = _pct_clip(arr)
@@ -332,8 +319,8 @@ def save_qc_png(
     )
     cbar = fig.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
     cbar.set_label(
-        "nT / m" if "fvd" in name or "svd" in name
-        else "nT/m" if "thg" in name or "as" in name or "thdr" in name
+        "nT / m" if "fvd" in name
+        else "nT/m" if "thg" in name or "as" in name
         else "rad",
         fontsize=9,
     )

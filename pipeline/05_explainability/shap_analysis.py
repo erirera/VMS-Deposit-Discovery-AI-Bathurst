@@ -71,9 +71,11 @@ def compute_shap_values(model, X: np.ndarray, feature_names: list):
     log.info(f"  Computing SHAP values for {X.shape[0]} samples ...")
     shap_values = explainer.shap_values(X)
 
-    # For binary classifiers, shap_values may be a list [class0, class1]
+    # For binary classifiers, shap_values may be a list [class0, class1] or a 3D array (n_samples, n_features, 2)
     if isinstance(shap_values, list):
         shap_values = shap_values[1]   # Use class 1 (VMS positive)
+    elif isinstance(shap_values, np.ndarray) and shap_values.ndim == 3:
+        shap_values = shap_values[:, :, 1]
 
     log.info(f"  SHAP values shape: {shap_values.shape}")
     return shap_values, explainer.expected_value
@@ -172,7 +174,11 @@ def run_for_model(model, X, y, feature_names, model_name):
     log.info("  Fitting final model on full dataset ...")
     model.fit(X, y)
     shap_vals, base_val = compute_shap_values(model, X, feature_names)
-    log.info(f"  Expected value (base rate): {base_val:.4f}")
+    if isinstance(base_val, (np.ndarray, list)):
+        base_val_val = base_val[1] if len(base_val) > 1 else base_val[0]
+    else:
+        base_val_val = base_val
+    log.info(f"  Expected value (base rate): {float(base_val_val):.4f}")
 
     plot_summary(shap_vals, X, feature_names, model_name)
     plot_bar(shap_vals, feature_names, model_name)

@@ -5,8 +5,7 @@ Comparative evaluation of the trained RF and XGBoost models.
 
 Produces:
   • Side-by-side CV metric table (ROC-AUC, Average Precision, Balanced Accuracy)
-  • ROC curve comparison plot (outputs/roc_curves.png)
-  • Precision-Recall curve plot (outputs/pr_curves.png)
+  • Unified evaluation curves plot (outputs/evaluation_curves.png) containing ROC, Precision-Recall, and Success Rate curves.
   • Feature importance comparison (outputs/feature_importance_comparison.png)
 
 Usage:
@@ -92,12 +91,12 @@ def compute_roc_pr(clf, X, y, cv):
     return np.array(all_true), np.array(all_probs)
 
 
-def plot_roc_pr(rf_true, rf_probs, xgb_true, xgb_probs):
+def plot_evaluation_curves(rf_true, rf_probs, xgb_true, xgb_probs):
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     with plt.rc_context(STYLE):
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        fig, axes = plt.subplots(1, 3, figsize=(20, 6))
         fig.suptitle(
-            "VMS Prospectivity — Model Comparison\nBathurst Mining Camp, NB",
+            "VMS Prospectivity – Model Comparison\nBathurst Mining Camp, NB",
             color="#f8fafc", fontsize=14, fontweight="bold"
         )
 
@@ -139,11 +138,32 @@ def plot_roc_pr(rf_true, rf_probs, xgb_true, xgb_probs):
         ax.legend(loc="upper right", framealpha=0.2)
         ax.grid(True, alpha=0.3)
 
+        # ── Success Rate Curve ───────────────────────────────────────────────
+        ax = axes[2]
+        for true, probs, label, color in [
+            (rf_true,  rf_probs,  "Random Forest", "#f59e0b"),
+            (xgb_true, xgb_probs, "XGBoost",       "#3b82f6"),
+        ]:
+            idx = np.argsort(probs)[::-1]
+            sorted_true = true[idx]
+            cum_deposits = np.cumsum(sorted_true) / sorted_true.sum()
+            cum_area = np.arange(1, len(sorted_true) + 1) / len(sorted_true)
+            ax.plot(cum_area * 100, cum_deposits * 100, color=color, lw=2.5, label=label)
+
+        ax.plot([0, 100], [0, 100], "w--", lw=1, alpha=0.4)
+        ax.set_xlabel("Cumulative % of Study Area (Ordered by Probability)")
+        ax.set_ylabel("Cumulative % of Deposits Discovered")
+        ax.set_title("Success Rate Curves (Spatial CV)", color="#94a3b8")
+        ax.legend(loc="lower right", framealpha=0.2)
+        ax.grid(True, alpha=0.3)
+
         fig.tight_layout()
-        out_path = OUTPUTS_DIR / "roc_pr_curves.png"
+        out_path = OUTPUTS_DIR / "evaluation_curves.png"
         fig.savefig(out_path, dpi=150, bbox_inches="tight")
         log.info(f"  ✅ Saved: {out_path}")
         plt.close(fig)
+
+
 
 
 def plot_feature_importance(names, rf_model, xgb_model):
@@ -210,7 +230,7 @@ def main():
     xgb_true, xgb_probs = compute_roc_pr(xgb_model, X, y, cv)
 
     log.info("\n[Generating plots ...]")
-    plot_roc_pr(rf_true, rf_probs, xgb_true, xgb_probs)
+    plot_evaluation_curves(rf_true, rf_probs, xgb_true, xgb_probs)
     plot_feature_importance(feature_names, rf_model, xgb_model)
 
     log.info("\n✅ Evaluation complete. Check outputs/ for figures.")

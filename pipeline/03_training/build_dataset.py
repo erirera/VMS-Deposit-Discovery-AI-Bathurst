@@ -125,10 +125,8 @@ def assign_spatial_blocks(df: pd.DataFrame, n_blocks: int = 5) -> np.ndarray:
         x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
         y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
 
-        # Divide into blocks along x-axis (easting strips)
-        x_bins = np.linspace(x_min, x_max, n_blocks + 1)
-        fold_ids = np.digitize(coords[:, 0], x_bins[:-1]) - 1
-        fold_ids = np.clip(fold_ids, 0, n_blocks - 1)
+        # Divide into blocks along x-axis using quantiles to guarantee equal-sized folds
+        fold_ids = pd.qcut(coords[:, 0], q=n_blocks, labels=False, duplicates='drop')
 
         log.info(f"  Spatial block distribution (n={n_blocks} folds):")
         for i in range(n_blocks):

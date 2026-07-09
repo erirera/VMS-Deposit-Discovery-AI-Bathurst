@@ -35,7 +35,7 @@ from config import (
     FEATURE_MATRIX_PQ, CRS_TARGET, NODATA_VALUE
 )
 
-PATHFINDER_ELEMENTS = ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]
+PATHFINDER_ELEMENTS = ["ag_ppm", "as_ppm", "ba_ppm", "bi_ppm", "cd_ppm", "co_ppm", "cu_ppm", "fe_ppm", "in_ppm", "mn_ppm", "mo_ppm", "ni_ppm", "pb_ppm", "sb_ppm", "sn_ppm", "tl_ppm", "zn_ppm"]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -148,7 +148,8 @@ def merge_geochem_features(
 
     # Convert to GeoDataFrame for nearest join
     from shapely.wkt import loads
-    points_gdf_tmp = gpd.GeoDataFrame(points_df, crs=CRS_TARGET)
+    geoms = points_df["geometry_wkt"].apply(loads)
+    points_gdf_tmp = gpd.GeoDataFrame(points_df, geometry=geoms, crs=CRS_TARGET)
 
     # Nearest join: for each label point, find the closest till sample
     geochem_sub = geochem_gdf[

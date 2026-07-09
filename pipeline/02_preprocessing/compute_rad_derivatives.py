@@ -16,7 +16,6 @@ Derived ratios computed
 -----------------------
   K/Th   -- Potassic alteration indicator (high K/Th = sericitic/potassic zones)
   U/Th   -- Uranium mobility index (high U/Th = hydrothermal leaching)
-  Dose   -- Total dose rate proxy: K*0.313 + Th*0.0430 + U*0.277 (nGy/h)
 
 All outputs written to:
   data/processed/rad_derivatives/<source_stem>/
@@ -58,10 +57,6 @@ DEFAULTS = {
     "uk":  "rad_uk_bmc_combined.tif",
 }
 
-# Dose rate conversion coefficients (IAEA, nGy/h per unit)
-DOSE_K_COEF  = 0.313   # per % K
-DOSE_TH_COEF = 0.0430  # per ppm Th
-DOSE_U_COEF  = 0.277   # per ppm U
 
 logging.basicConfig(
     level=logging.INFO,
@@ -142,7 +137,7 @@ def _pct_clip(arr, lo=2.0, hi=98.0):
 
 def save_qc_png(arr, name, title, dst_path, source_label="", res_m=50.0):
     dst_path.parent.mkdir(parents=True, exist_ok=True)
-    signed = any(t in name for t in ("ratio", "dose"))
+    signed = "ratio" in name
     cmap   = "YlOrRd" if not signed else "RdBu_r"
     if "k_th" in name or "k_bmc" in name:
         cmap = "YlGn"
@@ -150,8 +145,7 @@ def save_qc_png(arr, name, title, dst_path, source_label="", res_m=50.0):
         cmap = "OrRd"
     elif "u_bmc" in name or "u_th" in name or "u_k" in name:
         cmap = "PuRd"
-    elif "dose" in name:
-        cmap = "hot"
+
 
     vmin, vmax = _pct_clip(arr)
 
@@ -162,7 +156,7 @@ def save_qc_png(arr, name, title, dst_path, source_label="", res_m=50.0):
 
     units = {"k_bmc": "% K", "th_bmc": "ppm Th", "u_bmc": "ppm U",
              "th_k": "Th/K", "u_k": "U/K", "k_th": "K/Th",
-             "u_th": "U/Th", "dose": "nGy/h"}
+             "u_th": "U/Th"}
     unit_label = next((v for k, v in units.items() if k in name), "")
     cbar.set_label(unit_label, fontsize=9)
 
@@ -286,10 +280,6 @@ def main():
     u_th[np.isnan(u) | np.isnan(th)] = np.nan
     log.info("  U/Th: computed")
 
-    # Total dose rate (IAEA coefficients)
-    dose = DOSE_K_COEF * k + DOSE_TH_COEF * th + DOSE_U_COEF * u
-    dose[np.isnan(k) | np.isnan(th) | np.isnan(u)] = np.nan
-    log.info("  Dose rate: computed (K*0.313 + Th*0.043 + U*0.277)")
 
     # -- Write outputs --------------------------------------------------------
     outputs = {
@@ -300,7 +290,6 @@ def main():
         "rad_u_k_bmc":  (u_k,  "U/K Ratio"),
         "rad_k_th_bmc": (k_th, "K/Th Ratio (K enrichment)"),
         "rad_u_th_bmc": (u_th, "U/Th Ratio (U mobility)"),
-        "rad_dose_bmc": (dose, "Total Dose Rate (nGy/h)"),
     }
 
     log.info("\n--- Writing GeoTIFFs + QC PNGs ---")

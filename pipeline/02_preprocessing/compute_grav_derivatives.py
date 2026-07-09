@@ -58,7 +58,6 @@ DERIVATIVES = {
     "gra_ggr_hgm_bmc":   "Horizontal Gradient Magnitude (HGM)",
     "gra_ggr_tdr_bmc":   "Tilt Derivative (TDR)",
     "gra_ggr_fvd_bmc":   "First Vertical Derivative (FVD)",
-    "gra_ggr_svd_bmc":   "Second Vertical Derivative (SVD)",
     "gra_ggr_as_bmc":    "Analytic Signal Amplitude (AS)",
     "gra_ggr_uc500_bmc": f"Upward Continued {UPWARD_CONTINUATION_HEIGHT_M} m (UC500)",
     "gra_ggr_res_bmc":   f"Residual Bouguer (Bouguer - UC{UPWARD_CONTINUATION_HEIGHT_M})",
@@ -184,10 +183,6 @@ def compute_all_derivatives(grid: np.ndarray, dx: float) -> dict:
     log.info("  Computing FVD  (FFT order-1 vertical derivative) ...")
     fvd = _vertical_derivative(G_fft, K, order=1)
 
-    # SVD
-    log.info("  Computing SVD  (FFT order-2 vertical derivative) ...")
-    svd = _vertical_derivative(G_fft, K, order=2)
-
     # HGM
     log.info("  Computing HGM  (horizontal gradient magnitude) ...")
     dg_dx = np.gradient(grid, dx, axis=1)
@@ -220,7 +215,6 @@ def compute_all_derivatives(grid: np.ndarray, dx: float) -> dict:
         "gra_ggr_hgm_bmc":   _mask(hgm),
         "gra_ggr_tdr_bmc":   _mask(tdr),
         "gra_ggr_fvd_bmc":   _mask(fvd),
-        "gra_ggr_svd_bmc":   _mask(svd),
         "gra_ggr_as_bmc":    _mask(as_),
         "gra_ggr_uc500_bmc": _mask(uc500),
         "gra_ggr_res_bmc":   _mask(res),
@@ -257,7 +251,7 @@ def _pct_clip(arr: np.ndarray, lo: float = 2.0, hi: float = 98.0):
 
 
 def _units_label(stem: str) -> str:
-    if "fvd" in stem or "svd" in stem or "hgm" in stem or "as" in stem:
+    if "fvd" in stem or "hgm" in stem or "as" in stem:
         return "mGal / m"
     if "tdr" in stem:
         return "rad"
@@ -275,7 +269,7 @@ def save_qc_png(
     """Export a quick-look PNG of a gravity derivative grid."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-    signed = any(tag in name for tag in ("fvd", "tdr", "svd", "res"))
+    signed = any(tag in name for tag in ("fvd", "tdr", "res"))
     cmap   = "RdBu_r" if signed else "viridis"
 
     vmin, vmax = _pct_clip(arr)

@@ -54,7 +54,7 @@ RAD_K    = "rad_k_bmc"
 RAD_TH   = "rad_th_bmc"
 RAD_U    = "rad_u_bmc"
 
-GEOCHEM_COLS = ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]
+GEOCHEM_COLS = ["ag_ppm", "as_ppm", "ba_ppm", "bi_ppm", "cd_ppm", "co_ppm", "cu_ppm", "fe_ppm", "in_ppm", "mn_ppm", "mo_ppm", "ni_ppm", "pb_ppm", "sb_ppm", "sn_ppm", "tl_ppm", "zn_ppm"]
 
 # IDW-interpolated geochem rasters (all 17 elements, 0% null)
 IDW_GEOCHEM_COLS = [

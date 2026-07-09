@@ -95,9 +95,9 @@ def build_prediction_grid() -> tuple[np.ndarray, rasterio.transform.Affine, tupl
     return coords, transform, (height, width)
 
 
-def sample_all_rasters(coords: np.ndarray) -> pd.DataFrame:
-    """Sample all available rasters at grid point coordinates."""
-    from rasterio.sample import sample_gen
+def sample_all_rasters(coords: np.ndarray, transform, shape: tuple) -> pd.DataFrame:
+    """Sample all available rasters at grid point coordinates using fast warp reproject."""
+    from rasterio.warp import reproject, Resampling
     raster_paths = sorted(RASTERS_DIR.glob("*.tif"))
 
     if not raster_paths:
@@ -108,18 +108,26 @@ def sample_all_rasters(coords: np.ndarray) -> pd.DataFrame:
         return pd.DataFrame()
 
     results = {}
-    log.info(f"  Sampling {len(raster_paths)} raster(s) at {len(coords):,} grid points ...")
+    height, width = shape
+    log.info(f"  Sampling {len(raster_paths)} raster(s) at {len(coords):,} grid points using fast reproject ...")
 
     for rp in raster_paths:
         col = rp.stem.replace("_epsg2953", "")
+        dest = np.empty((height, width), dtype=np.float32)
         with rasterio.open(rp) as src:
-            vals = [
-                float(v[0]) if v[0] != src.nodata else np.nan
-                for v in sample_gen(src, coords)
-            ]
-        results[col] = vals
-        valid = sum(1 for v in vals if not np.isnan(float(v) if v is not None else np.nan))
-        log.info(f"    {col:30s}: {valid:,} / {len(vals):,} valid")
+            reproject(
+                source=rasterio.band(src, 1),
+                destination=dest,
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=transform,
+                dst_crs=CRS_TARGET,
+                resampling=Resampling.nearest,
+                dst_nodata=np.nan
+            )
+        results[col] = dest.ravel()
+        valid = np.isfinite(results[col]).sum()
+        log.info(f"    {col:30s}: {valid:,} / {len(results[col]):,} valid")
 
     return pd.DataFrame(results)
 
@@ -172,7 +180,7 @@ def predict_and_write(
     log.info(f"\n[Prediction — {model_name}]")
 
     # Sample rasters
-    grid_df = sample_all_rasters(coords)
+    grid_df = sample_all_rasters(coords, transform, shape)
     grid_df = apply_feature_engineering(grid_df)
 
     # Align to training features

@@ -49,7 +49,7 @@ def impute_zeros(X: np.ndarray) -> np.ndarray:
 
 def main():
     parser = argparse.ArgumentParser(description="Run PCA & FA on geochemical rasters.")
-    parser.add_argument("--method", choices=["idw", "kriging"], default="idw",
+    parser.add_argument("--method", choices=["idw"], default="idw",
                         help="Interpolation method of geochemical rasters (default: idw)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing output rasters")
     parser.add_argument("--max-fit-samples", type=int, default=100000,

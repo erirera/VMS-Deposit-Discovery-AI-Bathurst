@@ -204,109 +204,6 @@ def rasterise_idw(
 # ===========================================================================
 # Ordinary Kriging
 # ===========================================================================
-
-def rasterise_kriging(
-    gdf: gpd.GeoDataFrame,
-    out_path: Path,
-    resolution: float = RESOLUTION,
-    variogram_model: str = "spherical",
-    max_points: int = 500,
-    chunk_size: int = 25_000,
-    snap_bounds: tuple | None = None,
-) -> None:
-    """Interpolate a point GeoDataFrame using Ordinary Kriging and write a GeoTIFF.
-
-    Parameters
-    ----------
-    variogram_model : pykrige variogram model ('linear', 'power', 'gaussian',
-                      'spherical', 'exponential', 'hole-effect')
-    max_points      : Maximum sample size for variogram fitting. Kriging is
-                      O(N^3) so large datasets must be subsampled.
-    chunk_size      : Number of grid cells predicted per batch. Controls peak
-                      RAM usage: peak ~ chunk_size * max_points * 8 bytes.
-                      Default 25 000 -> ~100 MB per chunk at max_points=500.
-    """
-    try:
-        from pykrige.ok import OrdinaryKriging
-    except ImportError:
-        log.error("pykrige is not installed. Run: pip install pykrige")
-        raise
-
-    coords = np.column_stack([gdf.geometry.x.values, gdf.geometry.y.values])
-    values = gdf["VALUE"].values.astype(np.float64)
-
-    valid = np.isfinite(values) & (values >= 0)
-    if valid.sum() < 4:
-        log.warning("  Only %d valid samples -- skipping Kriging.", valid.sum())
-        return
-    coords, values = coords[valid], values[valid]
-
-    # Subsample if too many points (Kriging is O(N^3))
-    if len(values) > max_points:
-        rng = np.random.default_rng(42)
-        idx = rng.choice(len(values), size=max_points, replace=False)
-        coords, values = coords[idx], values[idx]
-        log.info("    Subsampled to %d points for Kriging.", max_points)
-
-    if snap_bounds is not None:
-        xmin, ymin, xmax, ymax = snap_bounds
-        log.info("    Extent snapped to reference bounds.")
-    else:
-        xmin = coords[:, 0].min()
-        ymin = coords[:, 1].min()
-        xmax = coords[:, 0].max()
-        ymax = coords[:, 1].max()
-    ncols = int(np.ceil((xmax - xmin) / resolution)) + 1
-    nrows = int(np.ceil((ymax - ymin) / resolution)) + 1
-
-    xs = np.arange(ncols) * resolution + xmin
-    ys = np.arange(nrows) * resolution + ymin
-
-    log.info("    Grid     : %d cols x %d rows  (%d cells)", ncols, nrows, ncols * nrows)
-    log.info("    Variogram: %s  (max_points=%d  chunk=%d)", variogram_model, max_points, chunk_size)
-
-    t0 = time.perf_counter()
-    ok = OrdinaryKriging(
-        coords[:, 0], coords[:, 1], values,
-        variogram_model=variogram_model,
-        verbose=False,
-        enable_plotting=False,
-        nlags=12,
-        coordinates_type="euclidean",
-    )
-
-    # --- Chunked prediction to avoid multi-GB allocations ---
-    # Build flat grid of (x, y) query points
-    gx, gy = np.meshgrid(xs, ys)          # shape (nrows, ncols) each
-    flat_x = gx.ravel()                    # shape (nrows*ncols,)
-    flat_y = gy.ravel()
-    n_cells = len(flat_x)
-    z_flat = np.empty(n_cells, dtype=np.float64)
-
-    n_chunks = int(np.ceil(n_cells / chunk_size))
-    for i in range(n_chunks):
-        s = i * chunk_size
-        e = min(s + chunk_size, n_cells)
-        z_chunk, _ = ok.execute("points", flat_x[s:e], flat_y[s:e])
-        z_flat[s:e] = z_chunk
-        if (i + 1) % 20 == 0 or (i + 1) == n_chunks:
-            log.info("      chunk %d/%d  (%.0f%%)", i + 1, n_chunks,
-                     100.0 * (i + 1) / n_chunks)
-
-    log.info("    Kriging done in %.1f s", time.perf_counter() - t0)
-
-    # Reshape, clip negatives (Kriging can predict slightly below 0), flip
-    grid = np.clip(z_flat.reshape(nrows, ncols), 0, None).astype(np.float32)
-    grid = np.flipud(grid)
-    transform = from_bounds(
-        xmin, ymin,
-        xmin + ncols * resolution, ymin + nrows * resolution,
-        ncols, nrows,
-    )
-    _write_tiff(grid, transform, out_path)
-
-
-# ===========================================================================
 # Shared GeoTIFF writer
 # ===========================================================================
 
@@ -340,7 +237,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Interpolate BMC till geochemistry GPKGs into GeoTIFF rasters."
     )
-    p.add_argument("--method", choices=["idw", "kriging"], default="idw",
+    p.add_argument("--method", choices=["idw"], default="idw",
                    help="Interpolation method (default: idw)")
     p.add_argument("--element", default=None,
                    help="Process only this element symbol, e.g. Cu")
@@ -350,11 +247,6 @@ def parse_args() -> argparse.Namespace:
                    metavar="P", help=f"IDW distance power (default: {IDW_POWER_DEFAULT})")
     p.add_argument("--idw-neighbours", type=int, default=IDW_NEIGHBOURS_DEFAULT,
                    metavar="K", help=f"IDW nearest neighbours (default: {IDW_NEIGHBOURS_DEFAULT})")
-    p.add_argument("--kriging-variogram", default="spherical",
-                   choices=["linear", "power", "gaussian", "spherical", "exponential", "hole-effect"],
-                   help="pykrige variogram model (default: spherical)")
-    p.add_argument("--kriging-max-points", type=int, default=500, metavar="N",
-                   help="Max sample size for Kriging variogram fit (default: 500)")
     p.add_argument("--resolution", type=float, default=RESOLUTION,
                    help=f"Output raster resolution in metres (default: {RESOLUTION})")
     p.add_argument("--snap-to", default=None, metavar="RASTER",
@@ -443,18 +335,11 @@ def main() -> None:
             continue
 
         try:
-            if args.method == "idw":
-                rasterise_idw(gdf, out_path,
-                              resolution=args.resolution,
-                              power=args.idw_power,
-                              k=args.idw_neighbours,
-                              snap_bounds=snap_bounds)
-            else:
-                rasterise_kriging(gdf, out_path,
-                                  resolution=args.resolution,
-                                  variogram_model=args.kriging_variogram,
-                                  max_points=args.kriging_max_points,
-                                  snap_bounds=snap_bounds)
+            rasterise_idw(gdf, out_path,
+                          resolution=args.resolution,
+                          power=args.idw_power,
+                          k=args.idw_neighbours,
+                          snap_bounds=snap_bounds)
             processed += 1
         except Exception as exc:
             log.exception("   ERROR processing %s: %s", stem, exc)

@@ -57,13 +57,10 @@ RASTER_FEATURES = [
     "mag_rmi_thg_bmc",  # Total Horizontal Gradient
     "mag_rmi_as_bmc",   # Analytic Signal Amplitude
     "mag_rmi_tdr_bmc",  # Tilt Derivative
-    "mag_rmi_thdr_bmc", # Tilt Horizontal Gradient
-    "mag_rmi_svd_bmc",  # Second Vertical Derivative
     # -- Gravity derivatives (computed by compute_grav_derivatives.py) --
     "gra_ggr_hgm_bmc",   # Horizontal Gradient Magnitude
     "gra_ggr_tdr_bmc",   # Tilt Derivative
     "gra_ggr_fvd_bmc",   # First Vertical Derivative
-    "gra_ggr_svd_bmc",   # Second Vertical Derivative
     "gra_ggr_as_bmc",    # Analytic Signal Amplitude
     "gra_ggr_uc500_bmc", # Upward Continued 500 m
     "gra_ggr_res_bmc",   # Residual Bouguer
@@ -75,7 +72,6 @@ RASTER_FEATURES = [
     "rad_u_th_bmc",     # U/Th ratio (derived)
     "rad_th_k_bmc",     # Th/K ratio (derived)
     "rad_u_k_bmc",      # U/K ratio (derived)
-    "rad_dose_bmc",     # Dose rate (derived)
     "gravity_bouguer",  # Bouguer anomaly
 
     # -- Till geochemistry IDW raster surfaces (from interpolate_geochem.py) --
@@ -107,21 +103,13 @@ RASTER_FEATURES = [
     "geochem_fa_factor3_idw",
     "geochem_fa_factor4_idw",
 
-    # -- Till geochemistry PCA / FA scores (Kriging) --
-    "geochem_pca_pc1_kriging",
-    "geochem_pca_pc2_kriging",
-    "geochem_pca_pc3_kriging",
-    "geochem_pca_pc4_kriging",
-    "geochem_fa_factor1_kriging",
-    "geochem_fa_factor2_kriging",
-    "geochem_fa_factor3_kriging",
-    "geochem_fa_factor4_kriging",
 ]
 
 # Till geochemistry pathfinder elements
 GEOCHEM_FEATURES = [
-    "zn_ppm", "pb_ppm", "cu_ppm",
-    "ag_ppm", "au_ppb", "as_ppm",
+    "ag_ppm", "as_ppm", "ba_ppm", "bi_ppm", "cd_ppm", "co_ppm", "cu_ppm",
+    "fe_ppm", "in_ppm", "mn_ppm", "mo_ppm", "ni_ppm", "pb_ppm", "sb_ppm",
+    "sn_ppm", "tl_ppm", "zn_ppm"
 ]
 
 ALL_FEATURES = RASTER_FEATURES + GEOCHEM_FEATURES
