@@ -34,10 +34,10 @@ All requested features and Kriging data have been removed. Additionally, all 17 
 ### 3. Model Training & Performance Comparison
 The introduction of the raw geochemical elements significantly improved both models:
 
-| Model | Previous AUC (No Raw Geochem) | New AUC (With Raw Geochem) | Key Feature Impact |
-|---|---|---|---|
-| **Random Forest** | 0.7895 | **0.8156 ± 0.1776** | **Lead (`pb_ppm`)** is now the **3rd most important feature** (Gini = 3.89%) |
-| **XGBoost** | 0.6999 | **0.7349 ± 0.1204** | **Iron (`fe_ppm`)** is now in the top 10 features |
+| Model | Previous ROC-AUC (No Raw Geochem) | New ROC-AUC (With Raw Geochem) | Success Rate AUC (Prediction-Area) | Key Feature Impact |
+|---|---|---|---|---|
+| **Random Forest** | 0.7895 | **0.8156 ± 0.1776** | **0.7219** | **Lead (`pb_ppm`)** is now the **3rd most important feature** (Gini = 3.89%) |
+| **XGBoost** | 0.6999 | **0.7349 ± 0.1204** | **0.6836** | **Iron (`fe_ppm`)** is now in the top 10 features |
 
 ### 4. Prospectivity Prediction Map
 *   Full-extent prospectivity grid predicted using the Random Forest model:
