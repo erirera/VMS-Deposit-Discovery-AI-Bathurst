@@ -2,9 +2,9 @@
 
 **Dele Falebita¹ · Mohammed Parsa² · David Leintz³**
 
-¹ [Department], [Institution], [City, Province, Country]
-² [Department], [Institution], [City, Province, Country]
-³ [Department], [Institution], [City, Province, Country]
+¹ [Department], [Institution], Dieppe, New Brunswick, Canada
+² Natural Resources Canada, Geological Survey of Canada, Ottawa, Ontario, Canada
+³ Department of Earth Sciences, University of New Brunswick, Fredericton, New Brunswick, Canada
 
 **Corresponding author:** Dele Falebita · [email address]
 
