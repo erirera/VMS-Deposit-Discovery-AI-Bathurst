@@ -1,6 +1,6 @@
 # Camp-Scale Machine Learning Prospectivity Mapping of Volcanogenic Massive Sulphide Deposits in the Bathurst Mining Camp, New Brunswick: Integrated Geophysical Derivatives and Multi-Element Till-Geochemistry
 
-**Dele Falebita¹ · Mohammed Parsa² · David Leintz³**
+**Dele Falebita¹ · Mohammad Parsa² · David Lentz³**
 
 ¹ [Department], [Institution], Dieppe, New Brunswick, Canada
 ² Natural Resources Canada, Geological Survey of Canada, Ottawa, Ontario, Canada
@@ -8,7 +8,7 @@
 
 **Corresponding author:** Dele Falebita · [email address]
 
-*Received: [date] / Accepted: [date]*
+
 
 ---
 
