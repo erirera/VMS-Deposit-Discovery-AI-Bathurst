@@ -20,7 +20,7 @@ graph TD
 ### Geophysical Datasets
 Airborne geophysical grids compiled by Natural Resources Canada (NRCan) over the Bathurst Mining Camp (BMC) were utilized, including Total Magnetic Intensity (TMI), Bouguer gravity, and gamma-ray spectrometric (radiometric) grids (Potassium, % K; Thorium, eTh ppm; Uranium, eU ppm). 
 
-To preserve boundaries and prevent grid distortions caused by coordinate system reprojections, horizontal and vertical derivatives were calculated in the Fourier domain on the native grids prior to transformation (Blakely, 1995):
+To preserve boundaries and prevent grid distortions caused by spatial resampling, horizontal and vertical derivatives were calculated in the Fourier domain on the original survey grids prior to cell-size transformation (Blakely, 1995):
 *   **First Vertical Derivative (FVD):** Computed using a 2D Fast Fourier Transform (FFT) to enhance high-frequency near-surface structural and lithological contacts.
 *   **Total Horizontal Gradient (THG):** Derived as:
     $$\text{THG} = \sqrt{\left(\frac{\partial F}{\partial x}\right)^2 + \left(\frac{\partial F}{\partial y}\right)^2}$$
