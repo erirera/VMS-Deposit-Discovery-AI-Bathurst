@@ -122,7 +122,7 @@ A critical methodological challenge in MPM is the absence problem: unlike ecolog
 
 1. **Confirmed barren drill holes (n = 125):** Real exploration drill intercepts compiled from NB Geological Survey records that did not return economic VMS mineralization. These anchor the model to geologically verified barren environments (Nykänen et al., 2008; Parsa et al., 2023).
 
-2. **Spatially constrained pseudo-absences (n = 125):** Random points generated within the active geophysical survey footprint, subject to a minimum exclusion distance of 3,000 m from any known VMS deposit. This exclusion buffer prevents contamination of the negative class by potentially mineralized but undiscovered halos surrounding known deposits (Maepa et al., 2021; Barbet-Massin et al., 2012). Pseudo-absences improve the spatial coverage of the negative class beyond historically drilled corridors (Zuo et al., 2023). A fixed random seed (seed = 42) was used to ensure reproducibility (Roberts et al., 2017).
+2. **Spatially constrained pseudo-absences (n = 125):** Random points generated within the active geophysical survey footprint, subject to a minimum exclusion distance of 3,000 m from any known VMS deposit. This exclusion buffer prevents contamination of the negative class by potentially mineralized but undiscovered halos surrounding known deposits (Maepa et al., 2021; Barbet-Massin et al., 2012). Pseudo-absences improve the spatial coverage of the negative class beyond historically drilled corridors (Zuo et al., 2019). A fixed random seed (seed = 42) was used to ensure reproducibility (Roberts et al., 2017).
 
 The spatial distribution of all 295 training labels is shown in Fig. 6. Features were extracted at these coordinates by sampling all geophysical derivative rasters and IDW-interpolated geochemical surfaces. To integrate raw geochemistry, a spatial nearest-neighbor join was performed: for each label point, the closest raw till geochemistry sample within a maximum search radius of 1,000 m was matched, appending raw elemental concentration values directly to the feature matrix.
 
@@ -405,5 +405,5 @@ Van Staal, C. R., Wilson, R. A., Rogers, N., Fyffe, L. R., Langton, J. P., McCut
 
 Verduzco, B., Fairhead, J. D., Green, C. M., & MacKenzie, C. (2004). New insights into magnetic derivatives for structural mapping. *The Leading Edge*, *23*(2), 116–119. https://doi.org/10.1190/1.1651454
 
-Zuo, R., Xiong, Y., Wang, Z., & Carranza, E. J. M. (2023). Deep learning and its application in geochemical mapping. *Earth-Science Reviews*, *192*, 1–14. https://doi.org/10.1016/j.earscirev.2019.02.023
+Zuo, R., Xiong, Y., Wang, Z., & Carranza, E. J. M. (2019). Deep learning and its application in geochemical mapping. *Earth-Science Reviews*, *192*, 1–14. https://doi.org/10.1016/j.earscirev.2019.02.023
 
