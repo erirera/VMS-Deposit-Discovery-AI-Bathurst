@@ -30,7 +30,7 @@ The Cambro-Ordovician Bathurst Mining Camp (BMC) in northern New Brunswick, Cana
 
 To construct a physically robust prospectivity model, preprocessing must respect the mathematical and physical nature of the geoscientific input data. Geophysical methods, such as high-resolution aeromagnetic and gravity surveys, map structural shear zones and mass anomalies. In traditional workflows, geophysical derivatives—e.g., the FVD, THG, and TDR—are often computed on reprojected, interpolated regional grids. However, this practice introduces edge effects, grid boundary artifacts, and distorts high-frequency structural gradients. Computing these derivatives in the Fourier domain directly on the original survey grids prior to spatial resampling preserves high-frequency boundary information and represents a more mathematically consistent approach to structural mapping (Thomas et al., 2000). Radiometric data further constrains VMS targeting by mapping radioelement ratios (e.g., K/Th, U/Th), which respond to potassic and sericitic alteration zones caused by hydrothermal vent systems (Shives et al., 1997).
 
-Geochemical datasets introduce additional mathematical complexity arising from their compositional structure. Because elemental concentrations share a fixed total (e.g., 10^6 ppm), the resulting constant-sum constraint renders classical multivariate techniques such as PCA and FA unreliable, producing correlations that reflect the closure effect rather than true geochemical relationships (Aitchison, 1986; Filzmoser et al., 2009). The Centered Log-Ratio (CLR) transformation addresses this by expressing each element as its logarithm relative to the geometric mean of the full composition, effectively lifting the data from the constrained simplex into unconstrained Euclidean space where standard multivariate methods are valid (Egozcue et al., 2003). Although CLR-transformed PCA and FA surfaces interpolated via IDW effectively summarize regional multi-element hydrothermal footprints, spatial smoothing during interpolation suppresses local, high-amplitude anomalies. Retaining raw elemental concentrations as additional point-scale features preserves these short-range geochemical contrasts (Parkhill and Doiron, 2003).
+Geochemical datasets introduce additional mathematical complexity arising from their compositional structure. Because elemental concentrations share a fixed total (e.g., $10^6$ ppm), the resulting constant-sum constraint renders classical multivariate techniques such as PCA and FA unreliable, producing correlations that reflect the closure effect rather than true geochemical relationships (Aitchison, 1986; Filzmoser et al., 2009). The Centered Log-Ratio (CLR) transformation addresses this by expressing each element as its logarithm relative to the geometric mean of the full composition, effectively lifting the data from the constrained simplex into unconstrained Euclidean space where standard multivariate methods are valid (Egozcue et al., 2003). Although CLR-transformed PCA and FA surfaces interpolated via IDW effectively summarize regional multi-element hydrothermal footprints, spatial smoothing during interpolation suppresses local, high-amplitude anomalies. Retaining raw elemental concentrations as additional point-scale features preserves these short-range geochemical contrasts (Parkhill and Doiron, 2003).
 
 A critical challenge in data-driven MPM is the absence problem: unlike ecological niche modelling, there are no confirmed mineral absence locations, as any undrilled location could theoretically host undiscovered mineralization (Carranza and Laborte, 2015; Parsa, 2022). Using only random pseudo-absences as negative training labels introduces ambiguity, as randomly selected locations provide no geological guarantee of being truly barren. Combining geologically verified barren drill intercepts with spatially constrained pseudo-absences provides a more defensible negative evidence base and has been shown to reduce model false positive rates (Parsa, 2022; Maepa et al., 2021; Barbet-Massin et al., 2012).
 
@@ -64,6 +64,88 @@ Four deformation phases (D1–D4) under greenschist-facies conditions have profo
 
 The prospectivity mapping framework is structured as a multi-stage ML pipeline progressing from raw data compilation and grid-derivative computation to spatial machine learning and area-normalized validation (Fig. 2). The workflow comprises five key components: (1) data compilation and native-grid preprocessing; (2) compositional geochemical analysis; (3) feature extraction and engineering; (4) spatial block cross-validation and model training; and (5) full-extent mapping and interpretability.
 
+```mermaid
+flowchart TD
+    %% Subgraphs for inputs
+    subgraph Inputs ["Input Data Sources"]
+        direction LR
+        GP["Airborne Geophysics<br>(TMI, Bouguer Gravity, Radiometrics %K, eTh, eU)"]
+        GC["Till Geochemistry<br>(17 Elements, 2,753 Locations)"]
+        LB["Spatial Labels (n = 295)<br>(45 VMS Deposits, 125 Barren Drillholes, 125 Pseudo-absences)"]
+    end
+
+    %% Preprocessing
+    subgraph Preproc ["Native-Grid & Compositional Preprocessing"]
+        direction TB
+        GP_Deriv["Fourier-Domain Derivatives<br>(FVD, THG, TDR, AS, radioelement ratios)"]
+        GC_Prep["Compositional Data Analysis (CoDA)<br>(CLR Transform + PCA/Factor Analysis)"]
+        GC_IDW["IDW Interpolation (50 m)<br>(Raw elements & CLR components)"]
+    end
+
+    GP --> GP_Deriv
+    GC --> GC_Prep --> GC_IDW
+
+    %% Resampling & Feature Extraction
+    subgraph FeatEng ["Feature Extraction & Resampling (100 m)"]
+        direction TB
+        Resample["Spatial Resampling (100 m)<br>(All geophysical & geochemical grids)"]
+        SampleLabels["Raster Sampling at Labels"]
+        NN_Join["Geochemical Nearest-Neighbor Join<br>(1,000 m Search Radius)"]
+        FeatCalc["Secondary Feature Calculation<br>(Log-transformations & MEAS)"]
+        QualityFilter["Data Quality Filtering<br>(Drop variables > 75% missing: Bi, In, Tl, Mn)"]
+    end
+
+    GP_Deriv --> Resample
+    GC_IDW --> Resample
+    Resample --> SampleLabels
+    GC --> NN_Join
+    LB --> SampleLabels
+    LB --> NN_Join
+    SampleLabels --> FeatCalc
+    NN_Join --> FeatCalc
+    FeatCalc --> QualityFilter
+
+    %% Model Training and Validation
+    subgraph ModelTrain ["Spatial Machine Learning & Evaluation"]
+        direction TB
+        SMOTE["SMOTE Class Balancing<br>(Augments n=45 positives to n=250; n=500 total)"]
+        SBCV["5-Fold Spatial Block Cross-Validation<br>(Prevents spatial autocorrelation leakage)"]
+        HyperTune["Hyperparameter Tuning<br>(Randomized Search CV)"]
+        Train["Classifier Training & Comparison<br>(Random Forest & XGBoost)"]
+        Eval["Model Evaluation<br>(ROC-AUC, Average Precision, Balanced Accuracy, Success Rate AUC)"]
+    end
+
+    QualityFilter --> SMOTE --> SBCV --> HyperTune --> Train
+    Train --> Eval
+
+    %% Prediction and Interpretation
+    subgraph Output ["Targeting & Interpretation"]
+        direction TB
+        BestModel["Best Classifier Selection<br>(Random Forest)"]
+        FullPredict["Full-Extent 100 m Grid Prediction<br>(1,194,109 cells)"]
+        MapExport["GeoTIFF Export (EPSG:2953)<br>(GIS-based Drill Targeting)"]
+        SHAP["SHAP Interpretability Analysis<br>(Global importances & local attributions)"]
+    end
+
+    Train --> BestModel --> FullPredict --> MapExport
+    FullPredict --> SHAP
+    Train --> SHAP
+
+    %% Styling
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef input fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef preproc fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px;
+    classDef feat fill:#fff3e0,stroke:#f57c00,stroke-width:1px;
+    classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:1px;
+    classDef out fill:#ffebee,stroke:#d32f2f,stroke-width:1px;
+    
+    class GP,GC,LB input;
+    class GP_Deriv,GC_Prep,GC_IDW preproc;
+    class Resample,SampleLabels,NN_Join,FeatCalc,QualityFilter feat;
+    class SMOTE,SBCV,HyperTune,Train,Eval model;
+    class BestModel,FullPredict,MapExport,SHAP out;
+```
+
 > *[Figure 2 near here]*
 
 ### 3.1 Geophysical Datasets and Derivative Computation
@@ -72,9 +154,21 @@ Airborne geophysical grids compiled by Natural Resources Canada (NRCan) over the
 
 To preserve structural boundaries and prevent grid distortions caused by spatial resampling, horizontal and vertical derivatives were computed in the Fourier domain on the original survey grids prior to cell-size transformation to 100 m (Blakely, 1995):
 
-- **First Vertical Derivative (FVD):** Computed using a two-dimensional Fast Fourier Transform (FFT) to enhance high-frequency near-surface structural and lithological contacts.
-- **Total Horizontal Gradient (THG):** Derived as the square root of the sum of squared horizontal partial derivatives, highlighting density and susceptibility contrasts at geological boundaries (Verduzco et al., 2004).
-- **Tilt Derivative (TDR):** Calculated as the arctangent of the ratio of the FVD to the THG, equalizing amplitude variations between shallow and deep structural sources. The combination of THG and TDR provides robust edge-detection filters that delineate fault geometries and volcanic contacts (Miller and Singh, 1994).
+- **First Vertical Derivative (FVD):** Computed via multiplication by the radial wavenumber $|\mathbf{k}|$ in the 2D Fourier domain, followed by the inverse transform, to enhance high-frequency near-surface structural and lithological contacts (Blakely, 1995):
+
+$$\text{FVD}(\mathbf{r}) = \mathcal{F}^{-1}\!\left\{ |\mathbf{k}|\, F(\mathbf{k}) \right\}, \qquad |\mathbf{k}| = \sqrt{k_x^2 + k_y^2}$$
+
+  where $F(\mathbf{k}) = \mathcal{F}\{f(\mathbf{r})\}$ is the 2D Fourier transform of the potential-field grid $f$ and $k_x$, $k_y$ are the horizontal wavenumbers.
+
+- **Total Horizontal Gradient (THG):** Derived as the magnitude of the horizontal gradient vector, highlighting density and susceptibility contrasts at geological boundaries (Verduzco et al., 2004):
+
+$$\text{THG}(\mathbf{r}) = \sqrt{\left(\frac{\partial f}{\partial x}\right)^{\!2} + \left(\frac{\partial f}{\partial y}\right)^{\!2}}$$
+
+  where the partial derivatives are computed via the Fourier-domain equivalents $\mathcal{F}^{-1}\{ik_x F(\mathbf{k})\}$ and $\mathcal{F}^{-1}\{ik_y F(\mathbf{k})\}$, respectively.
+
+- **Tilt Derivative (TDR):** Calculated as the arctangent of the ratio of the FVD to the THG, equalizing amplitude variations between shallow and deep structural sources and providing robust edge-detection filters that delineate fault geometries and volcanic contacts (Miller and Singh, 1994):
+
+$$\text{TDR}(\mathbf{r}) = \arctan\!\left(\frac{\text{FVD}}{\text{THG}}\right)$$
 
 Radiometric grids were preprocessed to generate radioelement ratios (K/Th, U/Th, Th/K, U/K) to map alteration zones characterized by potassic enrichment or thorium depletion indicative of VMS-related hydrothermal systems (Shives et al., 1997; Fig. 4d–f).
 
@@ -82,7 +176,11 @@ Radiometric grids were preprocessed to generate radioelement ratios (K/Th, U/Th,
 
 ### 3.2 Geochemical Datasets
 
-Till geochemistry point data were compiled from 17 separate single-element databases (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) covering the BMC. Because spatial coordinates varied slightly across individual survey datasets, sample points were aligned by rounding coordinates to the nearest meter, yielding a unified point geochemistry database of 2,753 unique locations. Geochemical surfaces were generated using IDW interpolation with a power parameter of 2 and a search neighborhood restricted to the nearest 12 points, producing 17 single-element raster surfaces at a 50 m cell size (Fig. 4g–i).
+Till geochemistry point data were compiled from 17 separate single-element databases (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) covering the BMC. Because spatial coordinates varied slightly across individual survey datasets, sample points were aligned by rounding coordinates to the nearest meter, yielding a unified point geochemistry database of 2,753 unique locations. Geochemical surfaces were generated using Inverse Distance Weighting (IDW) interpolation (Shepard, 1968):
+
+$$\hat{z}(\mathbf{s}_0) = \frac{\displaystyle\sum_{i=1}^{n} w_i\, z(\mathbf{s}_i)}{\displaystyle\sum_{i=1}^{n} w_i}, \qquad w_i = d(\mathbf{s}_0,\, \mathbf{s}_i)^{-p}$$
+
+where $\hat{z}(\mathbf{s}_0)$ is the predicted concentration at location $\mathbf{s}_0$, $z(\mathbf{s}_i)$ is the measured concentration at sample $\mathbf{s}_i$, $d(\mathbf{s}_0, \mathbf{s}_i)$ is the Euclidean distance between locations, $p = 2$ is the power parameter, and $n = 12$ is the number of nearest neighbors considered. This configuration produced 17 single-element raster surfaces at a 50 m cell size (Fig. 4g–i).
 
 ### 3.3 Compositional Geochemical Analysis
 
@@ -114,9 +212,15 @@ The spatial distribution of all 295 training labels is shown in Fig. 6. Features
 
 Secondary features were engineered to capture additional mineralization criteria:
 
-- **Analytic Signal (AS):** Computed for both magnetics and gravity to isolate anomaly centers regardless of magnetization or polarization direction.
-- **Log-transformations:** Applied to all raw and IDW-interpolated geochemical concentration columns to stabilize variance and normalize skewed distributions.
-- **Multi-Element Anomaly Score (MEAS):** A geologically weighted composite indicator calculated to capture anomalous concentrations of VMS pathfinder elements:
+- **Analytic Signal (AS):** Computed for both magnetics and gravity as the total amplitude of the gradient vector to isolate anomaly centers regardless of magnetization or polarization direction (Roest et al., 1992):
+
+$$\text{AS}(\mathbf{r}) = \sqrt{\left(\frac{\partial f}{\partial x}\right)^{\!2} + \left(\frac{\partial f}{\partial y}\right)^{\!2} + \left(\frac{\partial f}{\partial z}\right)^{\!2}} = \sqrt{\text{THG}^2 + \text{FVD}^2}$$
+- **Log-transformations:** Applied to all raw and IDW-interpolated geochemical concentration columns to stabilize variance and normalize the right-skewed frequency distributions characteristic of trace-element geochemistry (Reimann et al., 2008):
+
+$$x'_i = \ln(x_i + 1)$$
+
+  where $x_i$ is the raw elemental concentration and the shift of $+1$ prevents undefined values at zero-concentration observations.
+- **Multi-Element Anomaly Score (MEAS):** A geologically weighted composite indicator calculated to capture anomalous concentrations of VMS pathfinder elements (Bonham-Carter, 1994; Carranza, 2008):
 
 $$\text{MEAS} = \sum_{i \in \text{pathfinders}} w_i \cdot \text{scale}(x_i)$$
 
@@ -142,9 +246,17 @@ RF and XGBoost classifiers were trained and hyperparameter-tuned using randomize
 
 Model validation utilized four complementary metrics (Bonham-Carter, 1994). Three are reported as curves in Fig. 8; the fourth provides a threshold-specific summary score:
 
-1. **ROC-AUC:** Evaluates overall class separation by plotting the true positive rate against the false positive rate at all probability thresholds. As a threshold-independent metric it measures discriminatory power across the full operating range of the classifier, making it insensitive to any particular decision boundary.
+1. **ROC-AUC:** Evaluates overall class separation by plotting the True Positive Rate (TPR) against the False Positive Rate (FPR) at all probability thresholds. The area under the ROC curve is computed via the trapezoidal rule:
 
-2. **Average Precision (AP):** Evaluates the precision-recall trade-off, which is critical for highly imbalanced datasets where the positive class (VMS deposits) represents a small fraction of total observations. AP weights all thresholds by precision, penalizing models that produce excessive false positives at high recall.
+$$\text{ROC-AUC} = \sum_{k=1}^{n-1} \frac{(\text{FPR}_{k+1} - \text{FPR}_k)(\text{TPR}_{k+1} + \text{TPR}_k)}{2}$$
+
+   where $\text{TPR} = \text{TP}/(\text{TP}+\text{FN})$ and $\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$. As a threshold-independent metric, ROC-AUC measures discriminatory power across the full operating range of the classifier, making it insensitive to any particular decision boundary (Fawcett, 2006).
+
+2. **Average Precision (AP):** Evaluates the precision-recall trade-off, which is critical for highly imbalanced datasets where the positive class (VMS deposits) represents a small fraction of total observations. AP is the weighted mean of precision values at each threshold, using the change in recall as the weight:
+
+$$\text{AP} = \sum_{k=1}^{n} P_k \cdot (R_k - R_{k-1})$$
+
+   where $P_k = \text{TP}/(\text{TP}+\text{FP})$ is precision and $R_k = \text{TP}/(\text{TP}+\text{FN})$ is recall at threshold $k$. AP penalizes models that produce excessive false positives at high recall (Davis and Goadrich, 2006).
 
 3. **Balanced Accuracy (BA):** Defined as the arithmetic mean of sensitivity (true positive rate) and specificity (true negative rate) at a fixed decision threshold of 0.5:
 
@@ -152,7 +264,11 @@ $$\text{BA} = \frac{1}{2}\left(\frac{\text{TP}}{\text{TP}+\text{FN}} + \frac{\te
 
    BA provides a threshold-specific summary that equally weights the model's ability to correctly identify both VMS deposits and barren locations. Unlike standard accuracy, it is insensitive to class imbalance and will equal 0.5 for a no-skill classifier regardless of class frequencies (Brodersen et al., 2010). BA is particularly informative here because SMOTE-balanced training sets and 'balanced' class weights could in principle create a model that over-predicts the positive class; a BA close to 0.7 confirms that neither class dominates the predictions at the default threshold.
 
-4. **Success Rate AUC:** Evaluates targeting efficiency by plotting the cumulative percentage of VMS deposits captured against the cumulative percentage of the total study area covered when cells are ranked by prospectivity probability in descending order (Carranza, 2008). A Success Rate AUC approaching 1.0 indicates that deposits are concentrated within a small fraction of the prospective area, directly quantifying the economic efficiency of the model for drill-targeting decisions.
+4. **Success Rate AUC:** Evaluates targeting efficiency by plotting the cumulative fraction of known VMS deposits captured ($f_d$) against the cumulative fraction of total study area covered ($f_a$) when cells are ranked by prospectivity index in descending order (Carranza, 2008):
+
+$$\text{SR-AUC} = \sum_{k=1}^{n-1} \frac{(f_{a,k+1} - f_{a,k})(f_{d,k+1} + f_{d,k})}{2}$$
+
+   A random prediction yields SR-AUC = 0.5; a perfect model yields SR-AUC = 1.0. SR-AUC directly quantifies the economic efficiency of the model for drill-targeting decisions by measuring how much of the deposit inventory is captured within a minimal search area.
 
 ### 3.9 Full-Extent Mapping and Model Interpretability
 
@@ -172,7 +288,7 @@ Six primary geophysical grids were compiled for the BMC: TMI, Bouguer gravity an
 
 #### 4.1.2 Till Geochemistry Compilation
 
-Individual single-element geochemistry databases for 17 elements (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) were merged by coordinate matching into a unified spatial database of **2,753 unique sample locations**. IDW interpolation produced 17 element-specific raster surfaces at 50 m resolution (Fig. 4g–i). Data completeness varied substantially across elements: four elements (Bi, In, Tl, Mn) exhibited greater than 75% missing values at label locations and were excluded from model training; the remaining 13 elements (Ag, As, Ba, Cd, Co, Cu, Fe, Mo, Ni, Pb, Sb, Sn, Zn) were retained as raw geochemical predictors.
+Individual single-element geochemistry databases for 17 elements (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) were merged by coordinate matching into a unified spatial database of **2,753 unique sample locations**. IDW interpolation produced 17 element-specific raster surfaces at 50 m resolution (Fig. 4g–i). Four elements (Bi, In, Tl, Mn) exhibited greater than 75% missing values at label locations and were excluded from model training; the remaining 13 elements (Ag, As, Ba, Cd, Co, Cu, Fe, Mo, Ni, Pb, Sb, Sn, Zn) were retained as raw geochemical predictors.
 
 #### 4.1.3 Training Label Summary
 
@@ -180,9 +296,9 @@ The final training dataset comprised 295 spatially distributed labels: 45 known 
 
 ### 4.2 Compositional Geochemical Analysis
 
-CLR-PCA identified four principal components. The first component (PC1) was characterized by strong positive loadings for Zn (0.307), Pb (0.302), Sb (0.279), Ba (0.271), Cu (0.274), Fe (0.269), Co (0.298), and Ni (0.285), collectively representing a broad base-metal and mafic geochemical association consistent with VMS-related hydrothermal mineralization and surrounding alteration halos. PC2 was dominated by Bi (0.580) and Cd (0.523), reflecting a distinct sulphosalt–cadmium geochemical signature. PC3 was led by Ag (0.664) and As (−0.360), separating a precious-metal–arsenide association from a base-metal overprint. PC4 contrasted Sn (0.639) against Ag (−0.528), potentially reflecting a tin-skarn or lithogeochemical background component.
+CLR-PCA identified four principal components. PC1 was characterised by strong positive loadings for Zn (0.307), Pb (0.302), Co (0.298), Ni (0.285), Sb (0.279), Cu (0.274), Ba (0.271), and Fe (0.269). PC2 was dominated by Bi (0.580) and Cd (0.523). PC3 was led by Ag (0.664) and As (−0.360). PC4 contrasted Sn (0.639) against Ag (−0.528).
 
-CLR-FA with varimax rotation yielded four factors. FA Factor 4 (geochem_fa_factor4_idw) emerged as the most important geochemical composite feature in both models (see Section 4.4), characterized by high loadings for Ag (−0.362), Mo (−0.449), and Sn (−0.257) in contrast to strongly positive Bi (0.513) and Cd (0.264), suggesting a spatially coherent Ag–Mo depletion / Bi–Cd enrichment signature. FA Factor 1 showed the broadest base-metal association (Co, Cu, Fe, Ni, Pb, Sb, Zn) and likely reflects the regional VMS alteration footprint. Spatial raster surfaces of all four CLR-PCA and CLR-FA scores are shown in Fig. 5.
+CLR-FA with varimax rotation yielded four factors. FA Factor 4 (geochem_fa_factor4_idw) — the highest-ranked geochemical composite predictor in both models (Section 4.4) — was characterised by negative loadings for Ag (−0.362), Mo (−0.449), and Sn (−0.257), and positive loadings for Bi (0.513) and Cd (0.264). FA Factor 1 showed broad positive loadings for Co, Cu, Fe, Ni, Pb, Sb, and Zn. Spatial raster surfaces of all four CLR-PCA and CLR-FA scores are shown in Fig. 5.
 
 ### 4.3 Spatial Block Cross-Validation Performance
 
@@ -197,13 +313,7 @@ Table 1 summarizes the mean spatial block cross-validation metrics for RF and XG
 | Balanced Accuracy (mean ± SD) | **0.697 ± 0.151** | 0.582 ± 0.173 |
 | Success Rate AUC | **0.722** | 0.684 |
 
-The RF model outperformed XGBoost across all four metrics. RF achieved a mean ROC-AUC of 0.816, indicating strong overall class discrimination, with an Average Precision of 0.544 reflecting the substantially imbalanced base rate between VMS deposits and barren locations.
-
-The mean Balanced Accuracy of 0.697 (±0.151) for RF confirms that the model maintained near-symmetrical performance across both classes at a 0.5 decision threshold — correctly identifying approximately 70% of both VMS deposits and barren locations on average. This is particularly meaningful given that SMOTE augmentation and balanced class weights could bias the model towards over-predicting the minority class; the BA result indicates this bias was not introduced. By contrast, XGBoost's lower Balanced Accuracy of 0.582 (±0.173) suggests greater asymmetry between its sensitivity and specificity across folds, producing a higher rate of false positives or false negatives at the default threshold.
-
-The Success Rate AUC provides the most operationally relevant comparison: the RF curve reached 0.722 versus 0.684 for XGBoost (Fig. 8c). Translated to exploration practice, the RF prospectivity model captured approximately 80% of known VMS deposits within the top 30% of total study area ranked by predicted prospectivity index.
-
-The relatively high standard deviation on ROC-AUC (±0.178 for RF) reflects spatial heterogeneity in deposit density across the five geographic blocks: folds containing dense deposit clusters in the central BMC yielded higher discrimination scores, while folds dominated by peripheral, structurally isolated deposits presented greater classification difficulty.
+RF outperformed XGBoost across all four metrics. The RF model achieved a mean ROC-AUC of 0.816 ± 0.178, Average Precision of 0.544 ± 0.272, Balanced Accuracy of 0.697 ± 0.151, and Success Rate AUC of 0.722. XGBoost achieved ROC-AUC 0.735 ± 0.194, Average Precision 0.422 ± 0.241, Balanced Accuracy 0.582 ± 0.173, and Success Rate AUC 0.684. Standard deviations were high across continuous metrics for both classifiers, with RF ROC-AUC SD of ±0.178 and XGBoost ±0.194.
 
 > *[Figure 8 near here]*
 
@@ -213,31 +323,51 @@ SHAP mean absolute values were computed for all predictor features across the RF
 
 #### 4.4.1 Random Forest Feature Importance
 
-The magnetic Tilt Derivative (mag_rmi_tdr_bmc) was the most important predictor for RF (mean |SHAP| = 0.140), with a contribution approximately five times greater than the second-ranked feature. The magnetic Total Horizontal Gradient (mag_rmi_thg_bmc; 0.030) ranked second; together, these two edge-detection filters — which delineate structural contacts, shear zones, and volcanic boundaries — exert the strongest spatial control on VMS prospectivity in the camp. The remaining top-10 RF features in descending order were: CLR-FA Factor 4 IDW surface (geochem_fa_factor4_idw; 0.022), raw lead (pb_ppm; 0.021), IDW nickel (geochem_ni_ppm_idw; 0.018), IDW antimony (geochem_sb_ppm_idw; 0.018), raw molybdenum (mo_ppm; 0.017), airborne thorium (rad_th_bmc; 0.017), IDW tin (geochem_sn_ppm_idw; 0.016), and the magnetic First Vertical Derivative (mag_rmi_fvd_bmc; 0.013).
-
-The presence of raw elemental concentrations (pb_ppm, mo_ppm) and the CLR-FA Factor 4 composite (geochem_fa_factor4_idw) among the top five RF features confirms the value of integrating both point-scale raw geochemistry and regionally smoothed compositional surfaces as complementary predictors.
+The magnetic Tilt Derivative (mag_rmi_tdr_bmc) was the most important predictor for RF (mean |SHAP| = 0.140). The magnetic Total Horizontal Gradient (mag_rmi_thg_bmc; 0.030) ranked second. The remaining top-10 RF features in descending order were: CLR-FA Factor 4 IDW surface (geochem_fa_factor4_idw; 0.022), raw lead (pb_ppm; 0.021), IDW nickel (geochem_ni_ppm_idw; 0.018), IDW antimony (geochem_sb_ppm_idw; 0.018), raw molybdenum (mo_ppm; 0.017), airborne thorium (rad_th_bmc; 0.017), IDW tin (geochem_sn_ppm_idw; 0.016), and the magnetic First Vertical Derivative (mag_rmi_fvd_bmc; 0.013).
 
 #### 4.4.2 XGBoost Feature Importance
 
-The XGBoost model showed considerably more concentrated feature dependence, with the magnetic Tilt Derivative dominating even more strongly (mean |SHAP| = 0.503, representing 42% of total SHAP mass). The top-10 XGBoost features in descending order were: mag_rmi_tdr_bmc (0.503), geochem_fa_factor4_idw (0.100), raw molybdenum (mo_ppm; 0.098), magnetic Analytic Signal (mag_rmi_as_bmc; 0.071), airborne thorium (rad_th_bmc; 0.070), magnetic Total Horizontal Gradient (mag_rmi_thg_bmc; 0.059), IDW antimony (geochem_sb_ppm_idw; 0.053), IDW molybdenum (geochem_mo_ppm_idw; 0.049), raw iron (fe_ppm; 0.041), and raw lead (pb_ppm; 0.038).
+The XGBoost model showed considerably more concentrated feature dependence, with the magnetic Tilt Derivative accounting for mean |SHAP| = 0.503 (42% of total SHAP mass). The top-10 XGBoost features in descending order were: mag_rmi_tdr_bmc (0.503), geochem_fa_factor4_idw (0.100), raw molybdenum (mo_ppm; 0.098), magnetic Analytic Signal (mag_rmi_as_bmc; 0.071), airborne thorium (rad_th_bmc; 0.070), magnetic Total Horizontal Gradient (mag_rmi_thg_bmc; 0.059), IDW antimony (geochem_sb_ppm_idw; 0.053), IDW molybdenum (geochem_mo_ppm_idw; 0.049), raw iron (fe_ppm; 0.041), and raw lead (pb_ppm; 0.038).
 
-Across both models, five feature groups consistently appeared in the top 10: (1) magnetic structural derivatives (TDR, THG, AS, FVD); (2) CLR-FA Factor 4 composite (Ag–Mo depletion / Bi–Cd enrichment); (3) raw pathfinder element concentrations (Pb, Mo, Fe); (4) IDW-interpolated pathfinder surfaces (Ni, Sb, Mo, Sn); and (5) the airborne thorium radiometric grid. The thorium signal likely reflects hydrothermal Th depletion within potassic alteration halos proximal to VMS feeder systems (Shives et al., 1997; Goodfellow, 2007).
+Across both models, five feature groups consistently appeared in the top 10: (1) magnetic structural derivatives (TDR, THG, AS, FVD); (2) CLR-FA Factor 4; (3) raw pathfinder concentrations (Pb, Mo, Fe); (4) IDW-interpolated pathfinder surfaces (Ni, Sb, Mo, Sn); and (5) airborne thorium.
 
 > *[Figure 9 near here]*
 
 ### 4.5 Prospectivity Map
 
-The RF model was applied to the full 100 m prediction grid (953 × 1,253 = 1,194,109 cells) to generate the BMC VMS prospectivity map (Fig. 10). The predicted Prospectivity Index (PI) ranged continuously from 0 (low probability of VMS mineralization) to 1 (high probability), with a right-skewed distribution: the majority of the study area received PI < 0.3, consistent with the expectation that high-prospectivity zones should constitute a small fraction of total area.
-
-High-prospectivity zones (PI > 0.7) formed spatially coherent, elongate anomalies aligned with the northeast-trending structural fabric of the BMC, broadly following the strike of the Tetagouche Group host sequences and intersecting known VMS deposit clusters in the central and northern camp. Low-prospectivity regions (PI < 0.2) corresponded to Miramichi Group basement quartzites in the southeastern camp margin and Four Falls Group mafic sequences in the northwest, consistent with the geological expectation that bimodal-siliciclastic VMS mineralization is absent from these formations.
-
-Several high-PI anomalies (PI > 0.7) occurred in areas with no currently known deposits, representing potential drill targets in structurally favourable but previously untested ground. The prospectivity map was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS-based drill targeting workflows.
+The RF model was applied to the full 100 m prediction grid (953 × 1,253 = 1,194,109 cells), generating the BMC VMS prospectivity map (Fig. 10). The Prospectivity Index (PI) ranged from 0 to 1 with a right-skewed distribution; the majority of the study area received PI < 0.3. High-prospectivity zones (PI > 0.7) formed spatially coherent, elongate anomalies trending northeast across the camp. Low-prospectivity regions (PI < 0.2) were concentrated in the southeastern and northwestern camp margins. Several high-PI anomalies (PI > 0.7) occurred in areas with no currently known VMS deposits. The prospectivity map was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS-based drill targeting workflows.
 
 > *[Figure 10 near here]*
 
 ---
 
-## 5. Conclusions
+## 5. Discussion
+
+### 5.1 Geophysical Derivatives and Structural Controls on Prospectivity
+
+The dominance of magnetic TDR and THG in both classifiers confirms that structural architecture exerts the primary spatial control on VMS prospectivity in the BMC. The TDR equalizes amplitude between shallow and deep sources and is sensitive to potential-field edges irrespective of source depth, making it particularly effective for delineating the northeast-trending shear zones and volcanic contacts of the Tetagouche Group that channelled syn-volcanic hydrothermal fluids (Van Staal et al., 2003; Thomas et al., 2000). Computing derivatives in the Fourier domain directly on the original survey grids preserved the high-frequency structural signals that would be attenuated by resampling prior to differentiation (Blakely, 1995), which is critical in the BMC where deposit-scale structural contrasts occur over distances comparable to the original survey line spacing.
+
+The consistent ranking of airborne thorium (rad_th_bmc) among the top-10 predictors of both models reflects hydrothermal thorium depletion within potassic alteration halos proximal to VMS feeder systems. Thorium is selectively leached from wall-rocks during hydrothermal alteration driven by acidic, chloride-rich fluids, producing a measurable low-Th radiometric anomaly that is preserved in the BMC radiometric data (Shives et al., 1997). Its consistent appearance alongside magnetic structural derivatives suggests that the model captured a multi-physics alteration signature combining structural and radiometric controls.
+
+### 5.2 Geochemical Signals and Hydrothermal Footprints
+
+The CLR-PCA PC1 base-metal association (Zn, Pb, Co, Ni, Sb, Cu, Ba, Fe) represents the polymetallic hydrothermal dispersion halo of BMC VMS systems, preserved in glacial till through physical and chemical transport from underlying mineralization (Parkhill and Doiron, 2003). The PC2 Bi–Cd signature and PC3 Ag–As separation reflect metal zonation patterns well established in massive sulphide geochemistry: Bi and Cd preferentially partition into high-temperature sulphosalts proximal to vent sites, while Ag and As are enriched in lower-temperature distal portions of the hydrothermal system (Franklin et al., 2005).
+
+The CLR-FA Factor 4 composite (Ag–Mo depletion / Bi–Cd enrichment) was the highest-ranked geochemical predictor in both models. This geochemical signature is consistent with a hydrothermal mass-transfer footprint in which Bi and Cd are enriched at VMS-proximal positions while Ag and Mo are depleted relative to regional background through contrasting sulphide-melt and aqueous partitioning behaviour (Franklin et al., 2005). Its consistent emergence as the top geochemical predictor across two independently trained classifiers strengthens the inference that it captures a robust hydrothermal signal rather than a compositional artefact of the CLR transformation. The parallel ranking of raw pathfinder concentrations (Pb, Mo, Fe) alongside IDW-smoothed CLR-FA surfaces confirms that point-scale and regional-scale geochemical representations provide complementary predictive information, consistent with multi-scale integration recommendations for data-driven MPM (Parsa, 2022).
+
+### 5.3 Classifier Performance and Algorithm Comparison
+
+RF outperformed XGBoost across all four cross-validation metrics. The highly concentrated feature dependence observed in XGBoost (TDR: 42% of total SHAP mass) indicates that it captured the dominant structural signal effectively but underutilised the geochemical predictors. RF's ensemble averaging across independently grown trees distributes predictive weight more evenly across features, which is advantageous when prospectivity is determined by the intersection of structural, geochemical, and radiometric criteria simultaneously (Breiman, 2001; Harris et al., 2015).
+
+The RF Balanced Accuracy of 0.697 confirms that SMOTE augmentation and balanced class weights did not introduce minority-class over-prediction bias — a common concern when oversampling is applied to strongly imbalanced MPM datasets. XGBoost's lower BA of 0.582 suggests greater asymmetry between sensitivity and specificity at the default threshold, indicating that XGBoost's optimal operating decision boundary may lie at a threshold other than 0.5. The high fold-to-fold variability in cross-validation metrics (RF ROC-AUC SD: ±0.178) reflects genuine geological heterogeneity across the five spatial blocks rather than model instability: folds encompassing the deposit-dense central BMC yielded higher discrimination scores than peripheral folds dominated by structurally isolated deposits. Translated to exploration practice, the RF model captured approximately 80% of known BMC VMS deposits within the top 30% of the study area ranked by prospectivity index — a practically meaningful targeting efficiency for a district of this scale.
+
+### 5.4 Prospectivity Map Validation and Exploration Implications
+
+The spatial coherence of high-PI zones (PI > 0.7) with the northeast-trending structural fabric of the Tetagouche Group, and their coincidence with known VMS deposit clusters in the central and northern camp, validates the geological fidelity of the model. The correspondence of low-PI regions (PI < 0.2) with the Miramichi Group basement quartzites and the Four Falls Group — geological formations incompatible with bimodal-siliciclastic VMS mineralization (Goodfellow, 2007) — confirms that the model's spatial predictions are geologically self-consistent even in areas not represented by training labels. Several high-PI anomalies occurring outside the known deposit inventory, associated with northeast-trending structural lineaments and coinciding with elevated CLR-FA Factor 4 values, represent first-pass drill targets in structurally favourable but previously untested ground. Ground-truthing of these anomalies will require integration of depth-sensitive geophysical methods — including induced polarization or time-domain electromagnetic surveys — to constrain source geometry and discriminate VMS targets from barren conductors.
+
+---
+
+## 6. Conclusions
 
 This study developed a reproducible, camp-scale machine learning pipeline for VMS deposit prospectivity mapping in the Bathurst Mining Camp (BMC), New Brunswick, Canada, integrating 18 geophysical derivative layers with a newly compiled, spatially unified 17-element till geochemistry dataset covering 2,753 sample locations.
 
@@ -303,7 +433,11 @@ Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Sy
 
 Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785–794. https://doi.org/10.1145/2939672.2939785
 
+Davis, J., & Goadrich, M. (2006). The relationship between Precision-Recall and ROC curves. In *Proceedings of the 23rd International Conference on Machine Learning* (ICML '06) (pp. 233–240). ACM. https://doi.org/10.1145/1143844.1143874
+
 Egozcue, J. J., Pawlowsky-Glahn, V., Mateu-Figueras, G., & Barceló-Vidal, C. (2003). Isometric logratio transformations for compositional data analysis. *Mathematical Geology*, *35*(3), 279–300. https://doi.org/10.1023/A:1023818214614
+
+Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, *27*(8), 861–874. https://doi.org/10.1016/j.patrec.2005.10.010
 
 Filzmoser, P., Hron, K., & Reimann, C. (2009). Principal component analysis for compositional data with outliers. *Environmetrics*, *20*(6), 621–632. https://doi.org/10.1002/env.966
 
@@ -333,9 +467,15 @@ Parsa, M. (2022). Toward systematic uncertainties-informed mineral prospectivity
 
 Parsa, M., Maghsoudi, A., & Carranza, E. J. M. (2023). VHMS prospectivity mapping using random forests and the Bathurst Mining Camp as a case study. *Natural Resources Research*, *32*(2), 501–522. https://doi.org/10.1007/s11053-022-10128-0
 
+Reimann, C., Filzmoser, P., Garrett, R. G., & Dutter, R. (2008). *Statistical Data Analysis Explained: Applied Environmental Statistics with R*. Wiley. https://doi.org/10.1002/9780470987605
+
 Roberts, D. R., Bahn, V., Ciuti, S., Boyce, M. S., Elith, J., Guillera-Arroita, G., Hauenstein, S., Lahoz-Monfort, J. J., Schröder, B., Thuiller, W., Warton, D. I., Wintle, B. A., Hartig, F., & Dormann, C. F. (2017). Cross-validation strategies for data with temporal, spatial, or phylogenetic structure. *Ecography*, *40*(8), 913–929. https://doi.org/10.1111/ecog.02881
 
+Roest, W. R., Verhoef, J., & Pilkington, M. (1992). Magnetic interpretation using the 3-D analytic signal. *Geophysics*, *57*(1), 116–125. https://doi.org/10.1190/1.1443174
+
 Rogers, N., van Staal, C. R., McNicoll, V., Whalen, J. B., Finck, P., & Langton, J. P. (2003). Geology of the Bathurst Mining Camp: Part II. Ordovician arc and back-arc sequences of the Popelogan arc system and correlatives in northern New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 61–100). Society of Economic Geologists.
+
+Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. In *Proceedings of the 1968 23rd ACM National Conference* (pp. 517–524). ACM. https://doi.org/10.1145/800186.810616
 
 Shives, R. B. K., Charbonneau, B. W., & Ford, K. L. (1997). The utility of multiparameter airborne gamma-ray spectrometry surveys in mineral exploration and geological mapping. In A. G. Gubins (Ed.), *Proceedings of Exploration 97: Fourth Decennial International Conference on Mineral Exploration* (pp. 723–740). Prospectors and Developers Association of Canada.
 
