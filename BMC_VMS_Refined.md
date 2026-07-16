@@ -64,93 +64,13 @@ Four deformation phases (D1–D4) under greenschist-facies conditions have profo
 
 The prospectivity mapping framework is structured as a multi-stage ML pipeline progressing from raw data compilation and grid-derivative computation to spatial machine learning and area-normalized validation (Fig. 2). The workflow comprises five key components: (1) data compilation and native-grid preprocessing; (2) compositional geochemical analysis; (3) feature extraction and engineering; (4) spatial block cross-validation and model training; and (5) full-extent mapping and interpretability.
 
-```mermaid
-flowchart TD
-    %% Subgraphs for inputs
-    subgraph Inputs ["Input Data Sources"]
-        direction LR
-        GP["Airborne Geophysics<br>(TMI, Bouguer Gravity, Radiometrics %K, eTh, eU)"]
-        GC["Till Geochemistry<br>(17 Elements, 2,753 Locations)"]
-        LB["Spatial Labels (n = 295)<br>(45 VMS Deposits, 125 Barren Drillholes, 125 Pseudo-absences)"]
-    end
-
-    %% Preprocessing
-    subgraph Preproc ["Native-Grid & Compositional Preprocessing"]
-        direction TB
-        GP_Deriv["Fourier-Domain Derivatives<br>(FVD, THG, TDR, AS, radioelement ratios)"]
-        GC_Prep["Compositional Data Analysis (CoDA)<br>(CLR Transform + PCA/Factor Analysis)"]
-        GC_IDW["IDW Interpolation (50 m)<br>(Raw elements & CLR components)"]
-    end
-
-    GP --> GP_Deriv
-    GC --> GC_Prep --> GC_IDW
-
-    %% Resampling & Feature Extraction
-    subgraph FeatEng ["Feature Extraction & Resampling (100 m)"]
-        direction TB
-        Resample["Spatial Resampling (100 m)<br>(All geophysical & geochemical grids)"]
-        SampleLabels["Raster Sampling at Labels"]
-        NN_Join["Geochemical Nearest-Neighbor Join<br>(1,000 m Search Radius)"]
-        FeatCalc["Secondary Feature Calculation<br>(Log-transformations & MEAS)"]
-        QualityFilter["Data Quality Filtering<br>(Drop variables > 75% missing: Bi, In, Tl, Mn)"]
-    end
-
-    GP_Deriv --> Resample
-    GC_IDW --> Resample
-    Resample --> SampleLabels
-    GC --> NN_Join
-    LB --> SampleLabels
-    LB --> NN_Join
-    SampleLabels --> FeatCalc
-    NN_Join --> FeatCalc
-    FeatCalc --> QualityFilter
-
-    %% Model Training and Validation
-    subgraph ModelTrain ["Spatial Machine Learning & Evaluation"]
-        direction TB
-        SMOTE["SMOTE Class Balancing<br>(Augments n=45 positives to n=250; n=500 total)"]
-        SBCV["5-Fold Spatial Block Cross-Validation<br>(Prevents spatial autocorrelation leakage)"]
-        HyperTune["Hyperparameter Tuning<br>(Randomized Search CV)"]
-        Train["Classifier Training & Comparison<br>(Random Forest & XGBoost)"]
-        Eval["Model Evaluation<br>(ROC-AUC, Average Precision, Balanced Accuracy, Success Rate AUC)"]
-    end
-
-    QualityFilter --> SMOTE --> SBCV --> HyperTune --> Train
-    Train --> Eval
-
-    %% Prediction and Interpretation
-    subgraph Output ["Targeting & Interpretation"]
-        direction TB
-        BestModel["Best Classifier Selection<br>(Random Forest)"]
-        FullPredict["Full-Extent 100 m Grid Prediction<br>(1,194,109 cells)"]
-        MapExport["GeoTIFF Export (EPSG:2953)<br>(GIS-based Drill Targeting)"]
-        SHAP["SHAP Interpretability Analysis<br>(Global importances & local attributions)"]
-    end
-
-    Train --> BestModel --> FullPredict --> MapExport
-    FullPredict --> SHAP
-    Train --> SHAP
-
-    %% Styling
-    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    classDef input fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-    classDef preproc fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px;
-    classDef feat fill:#fff3e0,stroke:#f57c00,stroke-width:1px;
-    classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:1px;
-    classDef out fill:#ffebee,stroke:#d32f2f,stroke-width:1px;
-    
-    class GP,GC,LB input;
-    class GP_Deriv,GC_Prep,GC_IDW preproc;
-    class Resample,SampleLabels,NN_Join,FeatCalc,QualityFilter feat;
-    class SMOTE,SBCV,HyperTune,Train,Eval model;
-    class BestModel,FullPredict,MapExport,SHAP out;
-```
+![Fig. 2 Schematic flowchart of the machine learning prospectivity mapping pipeline](/Users/delef/.gemini/antigravity/brain/fee87920-985b-47de-af6f-868d6a640943/workflow.png)
 
 > *[Figure 2 near here]*
 
 ### 3.1 Geophysical Datasets and Derivative Computation
 
-Airborne geophysical grids compiled by Natural Resources Canada (NRCan) over the BMC were utilized, including Total Magnetic Intensity (TMI), Bouguer gravity, and gamma-ray spectrometric (radiometric) grids (potassium, %K; thorium, eTh ppm; uranium, eU ppm; Fig. 4a–c). All input grids had been previously reprojected from NAD83 UTM Zone 19N to New Brunswick Stereographic Double (NAD83; EPSG:2953) by the New Brunswick Department of Natural Resources and Energy Development (NBDNRED) prior to download. The resulting geophysical input grids and their derivatives are illustrated in Fig. 3.
+Airborne geophysical grids compiled by Natural Resources Canada (NRCan) over the BMC were utilized, including Total Magnetic Intensity (TMI), Bouguer gravity, and gamma-ray spectrometric (radiometric) grids (potassium, %K; thorium, eTh ppm; uranium, eU ppm; Fig. 3a–c). All input grids had been previously reprojected from NAD83 UTM Zone 19N to New Brunswick Stereographic Double (NAD83; EPSG:2953) by the New Brunswick Department of Natural Resources and Energy Development (NBDNRED) prior to download. The resulting geophysical input grids and their derivatives are illustrated in Fig. 4.
 
 To preserve structural boundaries and prevent grid distortions caused by spatial resampling, horizontal and vertical derivatives were computed in the Fourier domain on the original survey grids prior to cell-size transformation to 100 m (Blakely, 1995):
 
@@ -170,7 +90,7 @@ $$\text{THG}(\mathbf{r}) = \sqrt{\left(\frac{\partial f}{\partial x}\right)^{\!2
 
 $$\text{TDR}(\mathbf{r}) = \arctan\!\left(\frac{\text{FVD}}{\text{THG}}\right)$$
 
-Radiometric grids were preprocessed to generate radioelement ratios (K/Th, U/Th, Th/K, U/K) to map alteration zones characterized by potassic enrichment or thorium depletion indicative of VMS-related hydrothermal systems (Shives et al., 1997; Fig. 4d–f).
+Radiometric grids were preprocessed to generate radioelement ratios (K/Th, U/Th, Th/K, U/K) to map alteration zones characterized by potassic enrichment or thorium depletion indicative of VMS-related hydrothermal systems (Shives et al., 1997; Fig. 3d–f).
 
 > *[Figures 3 and 4 near here]*
 
@@ -180,7 +100,7 @@ Till geochemistry point data were compiled from 17 separate single-element datab
 
 $$\hat{z}(\mathbf{s}_0) = \frac{\displaystyle\sum_{i=1}^{n} w_i\, z(\mathbf{s}_i)}{\displaystyle\sum_{i=1}^{n} w_i}, \qquad w_i = d(\mathbf{s}_0,\, \mathbf{s}_i)^{-p}$$
 
-where $\hat{z}(\mathbf{s}_0)$ is the predicted concentration at location $\mathbf{s}_0$, $z(\mathbf{s}_i)$ is the measured concentration at sample $\mathbf{s}_i$, $d(\mathbf{s}_0, \mathbf{s}_i)$ is the Euclidean distance between locations, $p = 2$ is the power parameter, and $n = 12$ is the number of nearest neighbors considered. This configuration produced 17 single-element raster surfaces at a 50 m cell size (Fig. 4g–i).
+where $\hat{z}(\mathbf{s}_0)$ is the predicted concentration at location $\mathbf{s}_0$, $z(\mathbf{s}_i)$ is the measured concentration at sample $\mathbf{s}_i$, $d(\mathbf{s}_0, \mathbf{s}_i)$ is the Euclidean distance between locations, $p = 2$ is the power parameter, and $n = 12$ is the number of nearest neighbors considered. This configuration produced 17 single-element raster surfaces at a 50 m cell size (Fig. 3g–i).
 
 ### 3.3 Compositional Geochemical Analysis
 
@@ -272,9 +192,9 @@ $$\text{SR-AUC} = \sum_{k=1}^{n-1} \frac{(f_{a,k+1} - f_{a,k})(f_{d,k+1} + f_{d,
 
 ### 3.9 Full-Extent Mapping and Model Interpretability
 
-The best-performing model was applied to predict prospectivity across a 100 m grid covering the entire BMC (953 rows × 1,253 columns = 1,194,109 cells). The resulting prospectivity raster was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS software (Fig. 10).
+The best-performing model was applied to predict prospectivity across a 100 m grid covering the entire BMC (953 rows × 1,253 columns = 1,194,109 cells). The resulting prospectivity raster was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS software (Fig. 9).
 
-To move beyond opaque ML predictions, SHapley Additive exPlanations (SHAP; Lundberg and Lee, 2017) was applied to both trained models. Drawing on Shapley values from cooperative game theory, SHAP decomposes each model prediction into a sum of per-feature contributions, allocating credit to each input variable in proportion to its marginal effect across all possible feature subsets. This yields both a global ranking of feature importance (mean |SHAP|) and sample-level attribution plots that reveal which geophysical and geochemical signals drive prospectivity in specific spatial domains (Fig. 9).
+To move beyond opaque ML predictions, SHapley Additive exPlanations (SHAP; Lundberg and Lee, 2017) was applied to both trained models. Drawing on Shapley values from cooperative game theory, SHAP decomposes each model prediction into a sum of per-feature contributions, allocating credit to each input variable in proportion to its marginal effect across all possible feature subsets. This yields both a global ranking of feature importance (mean |SHAP|) and sample-level attribution plots that reveal which geophysical and geochemical signals drive prospectivity in specific spatial domains (Fig. 10).
 
 ---
 
@@ -284,11 +204,11 @@ To move beyond opaque ML predictions, SHapley Additive exPlanations (SHAP; Lundb
 
 #### 4.1.1 Geophysical and Radiometric Inputs
 
-Six primary geophysical grids were compiled for the BMC: TMI, Bouguer gravity anomaly, and four radiometric grids (potassium, %K; thorium, eTh; uranium, eU; and total count; Fig. 4a–c). Fourier-domain derivative computation yielded an additional eight derivative grids — FVD, THG, TDR, and AS for both magnetics and gravity — and four radioelement ratio grids (K/Th, U/Th, Th/K, U/K; Fig. 4d–f), producing a total of 18 geophysical predictor layers prior to resampling to 100 m (Fig. 3).
+Six primary geophysical grids were compiled for the BMC: TMI, Bouguer gravity anomaly, and four radiometric grids (potassium, %K; thorium, eTh; uranium, eU; and total count; Fig. 3a–c). Fourier-domain derivative computation yielded an additional eight derivative grids — FVD, THG, TDR, and AS for both magnetics and gravity — and four radioelement ratio grids (K/Th, U/Th, Th/K, U/K; Fig. 3d–f), producing a total of 18 geophysical predictor layers prior to resampling to 100 m (Fig. 4).
 
 #### 4.1.2 Till Geochemistry Compilation
 
-Individual single-element geochemistry databases for 17 elements (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) were merged by coordinate matching into a unified spatial database of **2,753 unique sample locations**. IDW interpolation produced 17 element-specific raster surfaces at 50 m resolution (Fig. 4g–i). Four elements (Bi, In, Tl, Mn) exhibited greater than 75% missing values at label locations and were excluded from model training; the remaining 13 elements (Ag, As, Ba, Cd, Co, Cu, Fe, Mo, Ni, Pb, Sb, Sn, Zn) were retained as raw geochemical predictors.
+Individual single-element geochemistry databases for 17 elements (Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn) were merged by coordinate matching into a unified spatial database of **2,753 unique sample locations**. IDW interpolation produced 17 element-specific raster surfaces at 50 m resolution (Fig. 3g–i). Four elements (Bi, In, Tl, Mn) exhibited greater than 75% missing values at label locations and were excluded from model training; the remaining 13 elements (Ag, As, Ba, Cd, Co, Cu, Fe, Mo, Ni, Pb, Sb, Sn, Zn) were retained as raw geochemical predictors.
 
 #### 4.1.3 Training Label Summary
 
@@ -319,7 +239,7 @@ RF outperformed XGBoost across all four metrics. The RF model achieved a mean RO
 
 ### 4.4 Feature Importance and SHAP Analysis
 
-SHAP mean absolute values were computed for all predictor features across the RF and XGBoost models (Fig. 9). Results are reported for the top 10 features by mean |SHAP| for each model.
+SHAP mean absolute values were computed for all predictor features across the RF and XGBoost models (Fig. 10). Results are reported for the top 10 features by mean |SHAP| for each model.
 
 #### 4.4.1 Random Forest Feature Importance
 
@@ -331,13 +251,13 @@ The XGBoost model showed considerably more concentrated feature dependence, with
 
 Across both models, five feature groups consistently appeared in the top 10: (1) magnetic structural derivatives (TDR, THG, AS, FVD); (2) CLR-FA Factor 4; (3) raw pathfinder concentrations (Pb, Mo, Fe); (4) IDW-interpolated pathfinder surfaces (Ni, Sb, Mo, Sn); and (5) airborne thorium.
 
-> *[Figure 9 near here]*
+> *[Figure 10 near here]*
 
 ### 4.5 Prospectivity Map
 
-The RF model was applied to the full 100 m prediction grid (953 × 1,253 = 1,194,109 cells), generating the BMC VMS prospectivity map (Fig. 10). The Prospectivity Index (PI) ranged from 0 to 1 with a right-skewed distribution; the majority of the study area received PI < 0.3. High-prospectivity zones (PI > 0.7) formed spatially coherent, elongate anomalies trending northeast across the camp. Low-prospectivity regions (PI < 0.2) were concentrated in the southeastern and northwestern camp margins. Several high-PI anomalies (PI > 0.7) occurred in areas with no currently known VMS deposits. The prospectivity map was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS-based drill targeting workflows.
+The RF model was applied to the full 100 m prediction grid (953 × 1,253 = 1,194,109 cells), generating the BMC VMS prospectivity map (Fig. 9). The Prospectivity Index (PI) ranged from 0 to 1 with a right-skewed distribution; the majority of the study area received PI < 0.3. High-prospectivity zones (PI > 0.7) formed spatially coherent, elongate anomalies trending northeast across the camp. Low-prospectivity regions (PI < 0.2) were concentrated in the southeastern and northwestern camp margins. Several high-PI anomalies (PI > 0.7) occurred in areas with no currently known VMS deposits. The prospectivity map was exported as a georeferenced GeoTIFF (EPSG:2953) for integration into GIS-based drill targeting workflows.
 
-> *[Figure 10 near here]*
+> *[Figure 9 near here]*
 
 ---
 
@@ -389,9 +309,9 @@ The small positive training set (n = 45) contributes to fold-to-fold cross-valid
 
 **Fig. 2** Schematic flowchart of the machine learning prospectivity mapping pipeline. Boxes denote processing stages; arrows denote data flow. Grey shading indicates stages executed on original survey grids prior to spatial resampling. CLR centered log-ratio; CoDA compositional data analysis; FA factor analysis; IDW inverse distance weighting; MEAS multi-element anomaly score; PCA principal component analysis; RF random forest; SHAP SHapley Additive exPlanations; SMOTE synthetic minority over-sampling technique; XGBoost extreme gradient boosting
 
-**Fig. 3** Geophysical input datasets compiled for the BMC. (a) Total Magnetic Intensity (TMI, nT). (b) First Vertical Derivative of TMI (FVD, nT/m). (c) Total Horizontal Gradient of TMI (THG, nT/m). (d) Tilt Derivative of TMI (TDR, radians). (e) Bouguer gravity anomaly (mGal). (f) Total Horizontal Gradient of Bouguer gravity (THG-g, mGal/m). All derivatives were computed in the Fourier domain on the original survey grids prior to resampling to 100 m cell size. Projection: EPSG:2953. Source: Natural Resources Canada (NRCan); reprojected by the New Brunswick Department of Natural Resources and Energy Development (NBDNRED)
+**Fig. 3** Radiometric and geochemical input surfaces for the BMC. (a–c) Airborne gamma-ray spectrometric grids: potassium (%K), uranium (eU ppm), and thorium (eTh ppm). (d–f) Selected radioelement ratio grids: K/Th, U/Th, and Th/K, used to map potassic and sericitic hydrothermal alteration zones. (g–i) Representative IDW-interpolated till geochemistry surfaces for lead (Pb ppm), zinc (Zn ppm), and copper (Cu ppm), generated from 2,753 unique sample locations. Projection: EPSG:2953
 
-**Fig. 4** Radiometric and geochemical input surfaces for the BMC. (a–c) Airborne gamma-ray spectrometric grids: potassium (%K), uranium (eU ppm), and thorium (eTh ppm). (d–f) Selected radioelement ratio grids: K/Th, U/Th, and Th/K, used to map potassic and sericitic hydrothermal alteration zones. (g–i) Representative IDW-interpolated till geochemistry surfaces for lead (Pb ppm), zinc (Zn ppm), and copper (Cu ppm), generated from 2,753 unique sample locations. Projection: EPSG:2953
+**Fig. 4** Geophysical input datasets compiled for the BMC. (a) Total Magnetic Intensity (TMI, nT). (b) First Vertical Derivative of TMI (FVD, nT/m). (c) Total Horizontal Gradient of TMI (THG, nT/m). (d) Tilt Derivative of TMI (TDR, radians). (e) Bouguer gravity anomaly (mGal). (f) Total Horizontal Gradient of Bouguer gravity (THG-g, mGal/m). All derivatives were computed in the Fourier domain on the original survey grids prior to resampling to 100 m cell size. Projection: EPSG:2953. Source: Natural Resources Canada (NRCan); reprojected by the New Brunswick Department of Natural Resources and Energy Development (NBDNRED)
 
 **Fig. 5** Compositional geochemical analysis results for the BMC till geochemistry dataset. (a) Biplot of centered log-ratio principal component analysis (CLR-PCA) components PC1 and PC2, showing element loadings and sample scores. (b–d) Spatial raster surfaces of CLR-PCA scores PC1, PC2, and PC3 interpolated via IDW at 50 m cell size. (e) CLR-FA factor score surface for the factor most strongly associated with VMS pathfinder elements (Pb, Zn, Cu, Ag). Variance explained by each component is reported in parentheses. Projection: EPSG:2953
 
@@ -401,9 +321,9 @@ The small positive training set (n = 45) contributes to fold-to-fold cross-valid
 
 **Fig. 8** Model evaluation curves for Random Forest (RF) and XGBoost (XGB) classifiers under 5-fold spatial block cross-validation. (a) Receiver Operating Characteristic (ROC) curves; mean ROC-AUC: RF = 0.816 ± 0.178, XGB = 0.735 ± 0.194. (b) Precision-Recall (PR) curves; mean Average Precision: RF = 0.544 ± 0.272, XGB = 0.422 ± 0.241. (c) Cumulative Success Rate (Prediction-Area) curves plotting the percentage of known VMS deposits captured against the percentage of total study area covered when cells are ranked by prospectivity probability in descending order; Success Rate AUC: RF = 0.722, XGB = 0.684. Shaded bands indicate ± 1 standard deviation across folds. The diagonal dashed line represents random prediction
 
-**Fig. 9** SHAP (SHapley Additive exPlanations) feature importance summary for the Random Forest model. (a) Bar chart of mean absolute SHAP values for the top 20 features, ranked in descending order of importance. Feature prefix conventions: mag_ magnetic derivative; grav_ gravity derivative; K_, Th_, U_ radiometric grids; _idw IDW-interpolated geochemical surface; _ppm raw till geochemistry concentration; clr_pc CLR-PCA score; clr_fa CLR-FA score. (b) Beeswarm SHAP plot showing the direction and magnitude of each feature's influence on model output across all training samples; red (blue) indicates high (low) feature values
+**Fig. 9** Random Forest prospectivity map of the Bathurst Mining Camp at 100 m spatial resolution. Prospectivity index (PI) ranges from 0 (low probability of VMS mineralization) to 1 (high probability). Known VMS deposits (yellow stars) and confirmed barren drill holes (red triangles) used in model training are overlaid for validation context. High-priority exploration target zones (PI > 0.7) are outlined with black contours. Geological contacts (thin grey lines) are shown for reference. Projection: EPSG:2953; exported as GeoTIFF for GIS integration
 
-**Fig. 10** Random Forest prospectivity map of the Bathurst Mining Camp at 100 m spatial resolution. Prospectivity index (PI) ranges from 0 (low probability of VMS mineralization) to 1 (high probability). Known VMS deposits (yellow stars) and confirmed barren drill holes (red triangles) used in model training are overlaid for validation context. High-priority exploration target zones (PI > 0.7) are outlined with black contours. Geological contacts (thin grey lines) are shown for reference. Projection: EPSG:2953; exported as GeoTIFF for GIS integration
+**Fig. 10** SHAP (SHapley Additive exPlanations) feature importance summary for the Random Forest model. (a) Bar chart of mean absolute SHAP values for the top 20 features, ranked in descending order of importance. Feature prefix conventions: mag_ magnetic derivative; grav_ gravity derivative; K_, Th_, U_ radiometric grids; _idw IDW-interpolated geochemical surface; _ppm raw till geochemistry concentration; clr_pc CLR-PCA score; clr_fa CLR-FA score. (b) Beeswarm SHAP plot showing the direction and magnitude of each feature's influence on model output across all training samples; red (blue) indicates high (low) feature values
 
 ---
 
