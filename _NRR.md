@@ -328,83 +328,82 @@ The small positive training set (n = 45) contributes to fold-to-fold cross-valid
 ---
 
 ## References
-Aitchison, J. (1986). The statistical analysis of compositional data. Chapman and Hall.
 
-Barbet-Massin, M., Jiguet, F., Albert, C. H., & Thuiller, W. (2012). Selecting pseudo-absences for species distribution models: how, where and how many? Methods in Ecology and Evolution, 3(2), 327–338. https://doi.org/10.1111/j.2041-210X.2011.00172.x
+Aitchison, J. (1986). *The statistical analysis of compositional data*. Chapman and Hall.
 
-Blakely, R. J. (1995). Potential theory in gravity and magnetic applications. Cambridge University Press.
+Barbet-Massin, M., Jiguet, F., Albert, C. H., & Thuiller, W. (2012). Selecting pseudo-absences for species distribution models: how, where and how many? *Methods in Ecology and Evolution*, *3*(2), 327–338. https://doi.org/10.1111/j.2041-210X.2011.00172.x
 
-Bonham-Carter, G. F. (1994). Geographic information systems for geoscientists: Modelling with GIS. Pergamon Press.
+Blakely, R. J. (1995). *Potential theory in gravity and magnetic applications*. Cambridge University Press.
 
-Brodersen, K. H., Ong, C. S., Stephan, K. E., & Buhmann, J. M. (2010). The balanced accuracy and its posterior distribution. In Proceedings of the 20th International Conference on Pattern Recognition (ICPR) (pp. 3121–3124). IEEE. https://doi.org/10.1109/ICPR.2010.764
+Bonham-Carter, G. F. (1994). *Geographic information systems for geoscientists: Modelling with GIS*. Pergamon Press.
 
-Breiman, L. (2001). Random forests. Machine Learning, 45(1), 5–32. https://doi.org/10.1023/A:1010933404324
+Brodersen, K. H., Ong, C. S., Stephan, K. E., & Buhmann, J. M. (2010). The balanced accuracy and its posterior distribution. In *Proceedings of the 20th International Conference on Pattern Recognition (ICPR)* (pp. 3121–3124). IEEE. https://doi.org/10.1109/ICPR.2010.764
 
-Brenning, A. (2012). Spatial cross-validation and bootstrap for the assessment of prediction rules in remote sensing: The R package sperrorest. 2012 IEEE International Geoscience and Remote Sensing Symposium, 5372–5375. https://doi.org/10.1109/IGARSS.2012.6352393
+Breiman, L. (2001). Random forests. *Machine Learning*, *45*(1), 5–32. https://doi.org/10.1023/A:1010933404324
 
-Carranza, E. J. M. (2008). Geochemical anomaly and mineral prospectivity mapping in GIS. Elsevier.
+Brenning, A. (2012). Spatial cross-validation and bootstrap for the assessment of prediction rules in remote sensing: The R package sperrorest. *2012 IEEE International Geoscience and Remote Sensing Symposium*, 5372–5375. https://doi.org/10.1109/IGARSS.2012.6352393
 
-Carranza, E. J. M. (2017). Geochemical anomaly and mineral prospectivity mapping in GIS. Ore Geology Reviews, 89, 1–3. https://doi.org/10.1016/j.oregeorev.2017.04.024
+Carranza, E. J. M. (2008). *Geochemical anomaly and mineral prospectivity mapping in GIS*. Elsevier.
 
-Carranza, E. J. M., & Laborte, A. G. (2015). Random forest predictive modeling of mineral prospectivity with small number of prospects and data with missing values in Abra (Philippines). Computers & Geosciences, 74, 60–70. https://doi.org/10.1016/j.cageo.2014.10.004
+Carranza, E. J. M. (2017). Geochemical anomaly and mineral prospectivity mapping in GIS. *Ore Geology Reviews*, *89*, 1–3. https://doi.org/10.1016/j.oregeorev.2017.04.024
 
-Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. Journal of Artificial Intelligence Research, 16, 321–357. https://doi.org/10.1613/jair.953
+Carranza, E. J. M., & Laborte, A. G. (2015). Random forest predictive modeling of mineral prospectivity with small number of prospects and data with missing values in Abra (Philippines). *Computers & Geosciences*, *74*, 60–70. https://doi.org/10.1016/j.cageo.2014.10.004
 
-Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 785–794. https://doi.org/10.1145/2939672.2939785
+Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357. https://doi.org/10.1613/jair.953
 
-Davis, J., & Goadrich, M. (2006). The relationship between Precision-Recall and ROC curves. In Proceedings of the 23rd International Conference on Machine Learning (ICML '06) (pp. 233–240). ACM. https://doi.org/10.1145/1143844.1143874
+Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785–794. https://doi.org/10.1145/2939672.2939785
 
-Egozcue, J. J., Pawlowsky-Glahn, V., Mateu-Figueras, G., & Barceló-Vidal, C. (2003). Isometric logratio transformations for compositional data analysis. Mathematical Geology, 35(3), 279–300. https://doi.org/10.1023/A:1023818214614
+Davis, J., & Goadrich, M. (2006). The relationship between Precision-Recall and ROC curves. In *Proceedings of the 23rd International Conference on Machine Learning* (ICML '06) (pp. 233–240). ACM. https://doi.org/10.1145/1143844.1143874
 
-Fawcett, T. (2006). An introduction to ROC analysis. Pattern Recognition Letters, 27(8), 861–874. https://doi.org/10.1016/j.patrec.2005.10.010
+Egozcue, J. J., Pawlowsky-Glahn, V., Mateu-Figueras, G., & Barceló-Vidal, C. (2003). Isometric logratio transformations for compositional data analysis. *Mathematical Geology*, *35*(3), 279–300. https://doi.org/10.1023/A:1023818214614
 
-Filzmoser, P., Hron, K., & Reimann, C. (2009). Principal component analysis for compositional data with outliers. Environmetrics, 20(6), 621–632. https://doi.org/10.1002/env.966
+Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, *27*(8), 861–874. https://doi.org/10.1016/j.patrec.2005.10.010
 
-Franklin, J. M., Gibson, H. L., Jonasson, I. R., & Galley, A. G. (2005). Volcanogenic massive sulphide deposits. Economic Geology 100th Anniversary Volume, 523–560.
+Filzmoser, P., Hron, K., & Reimann, C. (2009). Principal component analysis for compositional data with outliers. *Environmetrics*, *20*(6), 621–632. https://doi.org/10.1002/env.966
 
-Galley, A. G., Hannington, M. D., & Jonasson, I. R. (2007). Volcanogenic massive sulphide deposits. In W. D. Goodfellow (Ed.), Mineral deposits of Canada: A synthesis of major deposit-types, district metallogeny, the evolution of geological provinces, and the exploration methods (Special Publication No. 5, pp. 141–161). Geological Association of Canada, Mineral Deposits Division.
+Franklin, J. M., Gibson, H. L., Jonasson, I. R., & Galley, A. G. (2005). Volcanogenic massive sulphide deposits. *Economic Geology 100th Anniversary Volume*, 523–560.
 
-Goodfellow, W. D. (2007). Metallogeny of the Bathurst Mining Camp, northern New Brunswick. In W. D. Goodfellow (Ed.), Mineral deposits of Canada: A synthesis of major deposit-types, district metallogeny, the evolution of geological provinces, and the exploration methods (Special Publication No. 5, pp. 443–469). Geological Association of Canada, Mineral Deposits Division.
+Galley, A. G., Hannington, M. D., & Jonasson, I. R. (2007). Volcanogenic massive sulphide deposits. In W. D. Goodfellow (Ed.), *Mineral deposits of Canada: A synthesis of major deposit-types, district metallogeny, the evolution of geological provinces, and the exploration methods* (Special Publication No. 5, pp. 141–161). Geological Association of Canada, Mineral Deposits Division.
 
-Goodfellow, W. D., & McCutcheon, S. R. (2003). Geologic and genetic attributes of volcanic-associated massive sulphide deposits of the Bathurst Mining Camp, northern New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine (Economic Geology Monograph No. 11, pp. 19–60). Society of Economic Geologists.
+Goodfellow, W. D. (2007). Metallogeny of the Bathurst Mining Camp, northern New Brunswick. In W. D. Goodfellow (Ed.), *Mineral deposits of Canada: A synthesis of major deposit-types, district metallogeny, the evolution of geological provinces, and the exploration methods* (Special Publication No. 5, pp. 443–469). Geological Association of Canada, Mineral Deposits Division.
 
-Harris, J. R., Behnia, P., & Percival, J. B. (2015). Gold prospectivity mapping of the Hope Bay volcanic belt, Nunavut, Canada. Natural Resources Research, 24(2), 219–242. https://doi.org/10.1007/s11053-014-9255-4
+Goodfellow, W. D., & McCutcheon, S. R. (2003). Geologic and genetic attributes of volcanic-associated massive sulphide deposits of the Bathurst Mining Camp, northern New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 19–60). Society of Economic Geologists.
 
-Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. Advances in Neural Information Processing Systems, 30, 4765–4774.
+Harris, J. R., Behnia, P., & Percival, J. B. (2015). Gold prospectivity mapping of the Hope Bay volcanic belt, Nunavut, Canada. *Natural Resources Research*, *24*(2), 219–242. https://doi.org/10.1007/s11053-014-9255-4
 
-Maepa, F., Smith, R. S., & Tessema, A. (2021). Support vector machine and artificial neural network modelling of orogenic gold prospectivity mapping in the Swayze greenstone belt, Ontario, Canada. Ore Geology Reviews, 139, 104408. https://doi.org/10.1016/j.oregeorev.2021.104408
+Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. *Advances in Neural Information Processing Systems*, *30*, 4765–4774.
 
-McCutcheon, S. R., Scott, S. D., & Swinden, H. S. (2003). Geochemical and mineralogical characteristics of volcanogenic massive sulphide deposits in the Bathurst Mining Camp: Implications for exploration. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine (Economic Geology Monograph No. 11, pp. 361–390). Society of Economic Geologists.
+Maepa, F., Smith, R. S., & Tessema, A. (2021). Support vector machine and artificial neural network modelling of orogenic gold prospectivity mapping in the Swayze greenstone belt, Ontario, Canada. *Ore Geology Reviews*, *139*, 104408. https://doi.org/10.1016/j.oregeorev.2021.104408
 
-Miller, H. G., & Singh, V. (1994). Potential field tilt—A new concept for location of potential field sources. Journal of Applied Geophysics, 32(2–3), 213–217. https://doi.org/10.1016/0926-9851(94)90022-1
+McCutcheon, S. R., Scott, S. D., & Swinden, H. S. (2003). Geochemical and mineralogical characteristics of volcanogenic massive sulphide deposits in the Bathurst Mining Camp: Implications for exploration. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 361–390). Society of Economic Geologists.
 
-Nykänen, V., Groves, D. I., Ojala, V. J., Eilu, P., & Gardoll, S. J. (2008). Reconnaissance-scale conceptual fuzzy-logic prospectivity modelling for iron oxide copper–gold deposits in the northern Fennoscandian Shield, Finland. Australian Journal of Earth Sciences, 55(1), 25–38. https://doi.org/10.1080/08120090701581372
+Miller, H. G., & Singh, V. (1994). Potential field tilt—A new concept for location of potential field sources. *Journal of Applied Geophysics*, *32*(2–3), 213–217. https://doi.org/10.1016/0926-9851(94)90022-1
 
-Parkhill, M. A., & Doiron, A. (2003). Quaternary geology and till geochemistry of the Bathurst Mining Camp, New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine (Economic Geology Monograph No. 11, pp. 101–122). Society of Economic Geologists.
+Nykänen, V., Groves, D. I., Ojala, V. J., Eilu, P., & Gardoll, S. J. (2008). Reconnaissance-scale conceptual fuzzy-logic prospectivity modelling for iron oxide copper–gold deposits in the northern Fennoscandian Shield, Finland. *Australian Journal of Earth Sciences*, *55*(1), 25–38. https://doi.org/10.1080/08120090701581372
 
-Parsa, M. (2022). Toward systematic uncertainties-informed mineral prospectivity mapping. Natural Resources Research, 31(1), 3–17. https://doi.org/10.1007/s11053-021-09964-7
+Parkhill, M. A., & Doiron, A. (2003). Quaternary geology and till geochemistry of the Bathurst Mining Camp, New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 101–122). Society of Economic Geologists.
 
-Parsa, M., Maghsoudi, A., & Carranza, E. J. M. (2023). VHMS prospectivity mapping using random forests and the Bathurst Mining Camp as a case study. Natural Resources Research, 32(2), 501–522. https://doi.org/10.1007/s11053-022-10128-0
+Parsa, M. (2022). Toward systematic uncertainties-informed mineral prospectivity mapping. *Natural Resources Research*, *31*(1), 3–17. https://doi.org/10.1007/s11053-021-09964-7
 
-Reimann, C., Filzmoser, P., Garrett, R. G., & Dutter, R. (2008). Statistical Data Analysis Explained: Applied Environmental Statistics with R. Wiley. https://doi.org/10.1002/9780470987605
+Parsa, M., Maghsoudi, A., & Carranza, E. J. M. (2023). VHMS prospectivity mapping using random forests and the Bathurst Mining Camp as a case study. *Natural Resources Research*, *32*(2), 501–522. https://doi.org/10.1007/s11053-022-10128-0
 
-Roberts, D. R., Bahn, V., Ciuti, S., Boyce, M. S., Elith, J., Guillera-Arroita, G., Hauenstein, S., Lahoz-Monfort, J. J., Schröder, B., Thuiller, W., Warton, D. I., Wintle, B. A., Hartig, F., & Dormann, C. F. (2017). Cross-validation strategies for data with temporal, spatial, or phylogenetic structure. Ecography, 40(8), 913–929. https://doi.org/10.1111/ecog.02881
+Reimann, C., Filzmoser, P., Garrett, R. G., & Dutter, R. (2008). *Statistical Data Analysis Explained: Applied Environmental Statistics with R*. Wiley. https://doi.org/10.1002/9780470987605
 
-Roest, W. R., Verhoef, J., & Pilkington, M. (1992). Magnetic interpretation using the 3-D analytic signal. Geophysics, 57(1), 116–125. https://doi.org/10.1190/1.1443174
+Roberts, D. R., Bahn, V., Ciuti, S., Boyce, M. S., Elith, J., Guillera-Arroita, G., Hauenstein, S., Lahoz-Monfort, J. J., Schröder, B., Thuiller, W., Warton, D. I., Wintle, B. A., Hartig, F., & Dormann, C. F. (2017). Cross-validation strategies for data with temporal, spatial, or phylogenetic structure. *Ecography*, *40*(8), 913–929. https://doi.org/10.1111/ecog.02881
 
-Rogers, N., van Staal, C. R., McNicoll, V., Whalen, J. B., Finck, P., & Langton, J. P. (2003). Geology of the Bathurst Mining Camp: Part II. Ordovician arc and back-arc sequences of the Popelogan arc system and correlatives in northern New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine (Economic Geology Monograph No. 11, pp. 61–100). Society of Economic Geologists.
+Roest, W. R., Verhoef, J., & Pilkington, M. (1992). Magnetic interpretation using the 3-D analytic signal. *Geophysics*, *57*(1), 116–125. https://doi.org/10.1190/1.1443174
 
-Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. In Proceedings of the 1968 23rd ACM National Conference (pp. 517–524). ACM. https://doi.org/10.1145/800186.810616
+Rogers, N., van Staal, C. R., McNicoll, V., Whalen, J. B., Finck, P., & Langton, J. P. (2003). Geology of the Bathurst Mining Camp: Part II. Ordovician arc and back-arc sequences of the Popelogan arc system and correlatives in northern New Brunswick. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 61–100). Society of Economic Geologists.
 
-Shives, R. B. K., Charbonneau, B. W., & Ford, K. L. (1997). The utility of multiparameter airborne gamma-ray spectrometry surveys in mineral exploration and geological mapping. In A. G. Gubins (Ed.), Proceedings of Exploration 97: Fourth Decennial International Conference on Mineral Exploration (pp. 723–740). Prospectors and Developers Association of Canada.
+Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. In *Proceedings of the 1968 23rd ACM National Conference* (pp. 517–524). ACM. https://doi.org/10.1145/800186.810616
 
-Thomas, M. D., Goodfellow, W. D., & McCutcheon, S. R. (2000). Gravity signature of volcanogenic massive sulphide deposits in the Bathurst Mining Camp, New Brunswick, Canada. Geophysics, 65(5), 1425–1440. https://doi.org/10.1190/1.1444828
+Shives, R. B. K., Charbonneau, B. W., & Ford, K. L. (1997). The utility of multiparameter airborne gamma-ray spectrometry surveys in mineral exploration and geological mapping. In A. G. Gubins (Ed.), *Proceedings of Exploration 97: Fourth Decennial International Conference on Mineral Exploration* (pp. 723–740). Prospectors and Developers Association of Canada.
 
-Van Staal, C. R., Wilson, R. A., Rogers, N., Fyffe, L. R., Langton, J. P., McCutcheon, S. R., McNicoll, V., & Ravenhurst, C. E. (2003). Geology and tectonic history of the Bathurst Mining Camp and its relationships to coeval rocks in the New Brunswick Appalachians. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine (Economic Geology Monograph No. 11, pp. 37–60). Society of Economic Geologists.
+Thomas, M. D., Goodfellow, W. D., & McCutcheon, S. R. (2000). Gravity signature of volcanogenic massive sulphide deposits in the Bathurst Mining Camp, New Brunswick, Canada. *Geophysics*, *65*(5), 1425–1440. https://doi.org/10.1190/1.1444828
 
-Verduzco, B., Fairhead, J. D., Green, C. M., & MacKenzie, C. (2004). New insights into magnetic derivatives for structural mapping. The Leading Edge, 23(2), 116–119. https://doi.org/10.1190/1.1651454
+Van Staal, C. R., Wilson, R. A., Rogers, N., Fyffe, L. R., Langton, J. P., McCutcheon, S. R., McNicoll, V., & Ravenhurst, C. E. (2003). Geology and tectonic history of the Bathurst Mining Camp and its relationships to coeval rocks in the New Brunswick Appalachians. In W. D. Goodfellow, S. R. McCutcheon, & J. M. Peter (Eds.), *Massive sulphide deposits of the Bathurst Mining Camp, New Brunswick, and northern Maine* (Economic Geology Monograph No. 11, pp. 37–60). Society of Economic Geologists.
 
 Verduzco, B., Fairhead, J. D., Green, C. M., & MacKenzie, C. (2004). New insights into magnetic derivatives for structural mapping. *The Leading Edge*, *23*(2), 116–119. https://doi.org/10.1190/1.1651454
 
-Zuo, R., Xiong, Y., Wang, Z., & Carranza, E. J. M. (2023). Deep learning and its application in geochemical mapping. *Earth-Science Reviews*, *192*, 1–14. https://doi.org/10.1016/j.earscirev.2019.02.023
+Zuo, R., Xiong, Y., Wang, Z., & Carranza, E. J. M. (2019). Deep learning and its application in geochemical mapping. *Earth-Science Reviews*, *192*, 1–14. https://doi.org/10.1016/j.earscirev.2019.02.023
 
