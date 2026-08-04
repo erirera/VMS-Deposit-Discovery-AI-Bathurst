@@ -43,6 +43,15 @@ BMC_BBOX_WGS84 = (-66.85, 47.10, -65.20, 47.95)
 POSITIVE_BUFFER_M = 500   # 500m radius = confident mineralised zone
 NEGATIVE_BUFFER_M = 500   # 500m radius around confirmed barren holes
 
+# ── Pseudo-Absence Dissimilarity Sampling (Parsa & Cumani, 2025) ──────────────
+# Pseudo-absences are selected by maximising Mahalanobis distance in
+# multi-dimensional feature space from the VMS deposit centroid, rather than
+# by a simple geographic exclusion buffer.
+PSEUDO_ABSENCE_CANDIDATE_SPACING_M = 100   # Dense candidate grid spacing (m); matches TARGET_RESOLUTION_M
+PSEUDO_ABSENCE_MIN_BUFFER_M        = 1000  # Secondary geographic guard — hard minimum distance from any deposit
+PSEUDO_ABSENCE_DISSIM_QUANTILE     = 0.60  # Sample from top-40% most dissimilar candidates (quantile threshold)
+PSEUDO_ABSENCE_N_SPATIAL_STRATA    = 4     # Spatial quadrants for stratified selection (ensures geographic spread)
+
 # ── Raster Processing ─────────────────────────────────────────────────────────
 TARGET_RESOLUTION_M      = 100   # 100m pixel resolution for all geophysical grids
 MAG_DERIVATIVE_RESOLUTION_M = 50 # 50m resolution for magnetic derivative grids
@@ -128,7 +137,9 @@ BARREN_LABELS_GPKG  = LABELS_DIR   / "barren_negative_labels.gpkg"
 FEATURE_MATRIX_PQ   = PROCESSED_DIR / "feature_matrix.parquet"
 RF_MODEL_PATH       = MODELS_DIR   / "rf_best_model.joblib"
 XGB_MODEL_PATH      = MODELS_DIR   / "xgb_best_model.joblib"
-PROSPECTIVITY_TIFF  = OUTPUTS_DIR  / "bmc_prospectivity_map.tif"
+RF_PROSPECTIVITY_TIFF  = OUTPUTS_DIR / "rf_prospectivity_map.tif"
+XGB_PROSPECTIVITY_TIFF = OUTPUTS_DIR / "xgb_prospectivity_map.tif"
+PROSPECTIVITY_TIFF     = RF_PROSPECTIVITY_TIFF   # canonical alias (RF = primary model)
 
 print(f"[config] Repo root   : {REPO_ROOT}")
 print(f"[config] Data dir    : {DATA_DIR}")

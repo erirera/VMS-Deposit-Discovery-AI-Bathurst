@@ -1,0 +1,111 @@
+# Feature-Space Dissimilarity Pseudo-Absence Strategy
+
+## Background
+
+The current pseudo-absence strategy selects random points ≥3,000 m from known VMS deposits (geographic/Euclidean exclusion). Parsa & Cumani (2025) demonstrate that **geospatially dissimilar** negative labels — selected to be maximally dissimilar to deposits in **multi-dimensional feature space**, not just geographic space — produce stronger classifier discrimination and improved exploration targeting efficiency.
+
+The limitation of pure geographic buffers is that proximity in space does not guarantee similarity in geological character. Two points equidistant from a deposit may have completely different geophysical/geochemical signatures — one may look geologically identical to a deposit while the other looks nothing like one. The feature-space approach selects negatives that are most unlike deposits in their **actual geological fingerprint**.
+
+---
+
+## Proposed Approach: Mahalanobis Distance Dissimilarity Sampling
+
+Rather than a geographic exclusion buffer, pseudo-absences will be selected using **Mahalanobis distance in normalized feature space** from the centroid of the positive (deposit) class. Points with the **highest Mahalanobis distance** (i.e., most dissimilar to the deposit cluster in geophysical/geochemical space) are selected as pseudo-negatives.
+
+### Why Mahalanobis Distance?
+- Unlike Euclidean distance in feature space, Mahalanobis distance accounts for **feature correlations and variances**, preventing high-variance features from dominating the dissimilarity measure.
+- It defines an ellipsoidal "deposit envelope" in feature space, and selects pseudo-negatives outside and far from that envelope.
+- Consistent with the spirit of Parsa & Cumani (2025): negatives in maximally different geological environments from the deposits.
+
+### Workflow
+
+```
+All unlabelled grid points (full feature matrix)
+        ↓
+Sample geophysical raster values (already done by extract_features.py)
+        ↓
+Compute Mahalanobis distance of each candidate point to the VMS deposit centroid in feature space
+        ↓
+Rank candidates by dissimilarity (highest = most unlike deposits)
+        ↓
+Sample n=125 pseudo-absences from the top dissimilarity quantile (e.g., top 40%)
+        ↓  (stratified to ensure spatial spread across the footprint)
+Combine with 125 confirmed barren holes → 250 negatives
+```
+
+A **secondary minimum geographic buffer** of 1,000 m (reduced from 3,000 m) is retained as a hard constraint to prevent accidentally labelling points immediately adjacent to known deposits, while the primary selection driver is feature-space dissimilarity.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Operational dependency**: The Mahalanobis-based selection requires that `extract_features.py` has already been run to produce `feature_matrix.parquet` with raster values sampled at all grid points — OR at the very least, at a dense candidate point cloud across the survey footprint. If the feature matrix only contains labelled points (deposits + barren holes), the candidate pool will be insufficient.
+>
+> **Proposed resolution**: `generate_pseudo_absences_dissimilar()` will generate a dense candidate grid (e.g., every 500 m across the raster footprint), sample all available reprojected rasters at those points, compute dissimilarity, and select the 125 most dissimilar. This is self-contained within `download_vms_labels.py`.
+
+> [!WARNING]
+> **Feature availability at label-generation time**: `download_vms_labels.py` runs *before* `extract_features.py` in the pipeline. The new function will need to sample rasters directly (using `rasterio`) from the reprojected raster directory, which requires `reproject_grids.py` to have been run first. The script will check for raster availability and fall back to the old geographic method with a warning if no rasters are found.
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Stratification preference**: Should the 125 pseudo-absences be:
+> - (a) The top-125 most dissimilar points globally (maximum dissimilarity, may cluster in one geological zone), OR
+> - (b) Stratified by spatial block (e.g., top ~25 per spatial quadrant) to ensure geographic spread across the footprint while still being geologically dissimilar?
+>
+> **Recommendation**: Option (b) — stratified by spatial block — balances feature-space dissimilarity with spatial representativeness. The plan implements this as the default, with a flag to switch to pure top-K selection.
+
+---
+
+## Proposed Changes
+
+### Pipeline Step: `01_data_download`
+
+#### [MODIFY] [download_vms_labels.py](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/pipeline/01_data_download/download_vms_labels.py)
+
+Replace `generate_pseudo_absences()` (lines 203–254) with a new `generate_pseudo_absences_dissimilar()` function that:
+
+1. Generates a dense candidate grid across the raster footprint (every 500 m)
+2. Samples all available reprojected rasters at candidate points
+3. Standardizes features (StandardScaler, fit on positive class features)
+4. Computes Mahalanobis distance from each candidate to the deposit centroid in feature space
+5. Applies a minimum 1,000 m geographic guard buffer (secondary filter only)
+6. Stratifies candidates into spatial quadrants
+7. Selects top-K dissimilar candidates per quadrant to reach n=125 total
+8. Falls back to geographic exclusion if rasters unavailable (with warning)
+
+#### [MODIFY] [config.py](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/pipeline/config.py)
+
+Add configuration constants:
+- `PSEUDO_ABSENCE_CANDIDATE_SPACING_M = 500` — candidate grid spacing
+- `PSEUDO_ABSENCE_MIN_BUFFER_M = 1000` — secondary geographic guard
+- `PSEUDO_ABSENCE_DISSIM_QUANTILE = 0.60` — sample from top-40% most dissimilar
+- `PSEUDO_ABSENCE_N_SPATIAL_STRATA = 4` — number of spatial strata for stratification
+
+---
+
+### Methodology Documentation
+
+#### [MODIFY] [methodology3.md](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/methodology3.md)
+
+Update Section 4.1.2 (pseudo-negative description) and Section 4.1.3 (sample design rationale) to:
+- Remove the 3,000 m distance-buffer framing as the primary selection criterion
+- Introduce the feature-space Mahalanobis dissimilarity framework
+- Cite Parsa & Cumani (2025) as the primary methodological basis
+- Update the references section
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `python pipeline/01_data_download/download_vms_labels.py` and verify the GPKG is generated with 250 negative labels (125 barren + 125 pseudo-absences)
+- Verify that pseudo-absences have `source = "pseudo_absence_dissimilar"` in the output GPKG
+- Check that no pseudo-absence is within 1,000 m of a known VMS deposit
+
+### Manual Verification
+- Inspect the spatial distribution of the selected pseudo-absences vs. VMS deposits in QGIS to confirm they are distributed in geologically contrasting areas
+- Verify the methodology text reads coherently and the new citation is properly integrated

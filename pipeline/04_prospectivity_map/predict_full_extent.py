@@ -1,19 +1,12 @@
 """
 predict_full_extent.py
 ───────────────────────
-Runs the trained model across the full ~3,800 km² Bathurst Mining Camp
-extent to generate a continuous prospectivity map.
+Runs BOTH trained models (RF and XGBoost) across the full ~3,800 km² Bathurst
+Mining Camp extent to generate two continuous prospectivity maps.
 
-Process:
-  1. Load best model (RF or XGBoost, whichever has higher CV AUC)
-  2. Create a 100m resolution prediction grid over the BMC extent
-  3. Sample all geophysical rasters at each grid cell centroid
-  4. Apply engineered features (same as training)
-  5. Predict VMS probability at each grid cell
-  6. Write output as GeoTIFF prospectivity map
-
-The output GeoTIFF is the primary scientific deliverable — it can be
-opened in QGIS, ArcGIS, or any GIS platform for drill target generation.
+Outputs:
+  outputs/rf_prospectivity_map.tif   ← Random Forest
+  outputs/xgb_prospectivity_map.tif  ← XGBoost
 
 Usage:
     python pipeline/04_prospectivity_map/predict_full_extent.py
@@ -36,9 +29,9 @@ sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
     PROCESSED_DIR, MODELS_DIR, OUTPUTS_DIR,
     RF_MODEL_PATH, XGB_MODEL_PATH,
+    RF_PROSPECTIVITY_TIFF, XGB_PROSPECTIVITY_TIFF,
     BMC_BBOX_WGS84, CRS_SOURCE, CRS_TARGET,
     TARGET_RESOLUTION_M, NODATA_VALUE,
-    PROSPECTIVITY_TIFF
 )
 
 logging.basicConfig(
@@ -48,32 +41,18 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-DATASET_DIR     = PROCESSED_DIR / "training_dataset"
-RASTERS_DIR     = PROCESSED_DIR / "rasters_reprojected"
+DATASET_DIR = PROCESSED_DIR / "training_dataset"
+RASTERS_DIR = PROCESSED_DIR / "rasters_reprojected"
+
+# Both models and their output paths
+MODELS_TO_RUN = [
+    ("Random Forest", RF_MODEL_PATH,  RF_PROSPECTIVITY_TIFF),
+    ("XGBoost",       XGB_MODEL_PATH, XGB_PROSPECTIVITY_TIFF),
+]
 
 
-def select_best_model() -> tuple:
-    """Load both models and select the one with higher CV AUC."""
-    rf_metrics  = pd.read_csv(MODELS_DIR / "rf_cv_metrics.csv")
-    xgb_metrics = pd.read_csv(MODELS_DIR / "xgb_cv_metrics.csv")
-
-    rf_auc  = rf_metrics["roc_auc_mean"].values[0]
-    xgb_auc = xgb_metrics["roc_auc_mean"].values[0]
-
-    if rf_auc >= xgb_auc:
-        log.info(f"  Selected: Random Forest (AUC={rf_auc:.4f} vs XGB={xgb_auc:.4f})")
-        return joblib.load(RF_MODEL_PATH), "RandomForest"
-    else:
-        log.info(f"  Selected: XGBoost (AUC={xgb_auc:.4f} vs RF={rf_auc:.4f})")
-        return joblib.load(XGB_MODEL_PATH), "XGBoost"
-
-
-def build_prediction_grid() -> tuple[np.ndarray, rasterio.transform.Affine, tuple]:
-    """
-    Create a regular grid of points covering the BMC extent in EPSG:2953.
-    Returns grid coordinates (N, 2), affine transform, and (height, width).
-    """
-    # Reproject BMC bbox from WGS84 → EPSG:2953
+def build_prediction_grid():
+    """Create a regular 100 m grid over the BMC extent in EPSG:2953."""
     lon_min, lat_min, lon_max, lat_max = BMC_BBOX_WGS84
     bbox_gdf = gpd.GeoDataFrame(
         geometry=[box(lon_min, lat_min, lon_max, lat_max)],
@@ -81,35 +60,31 @@ def build_prediction_grid() -> tuple[np.ndarray, rasterio.transform.Affine, tupl
     ).to_crs(CRS_TARGET)
     minx, miny, maxx, maxy = bbox_gdf.total_bounds
 
-    # Build grid at 100m resolution
     xs = np.arange(minx, maxx, TARGET_RESOLUTION_M)
-    ys = np.arange(maxy, miny, -TARGET_RESOLUTION_M)  # Top-down
+    ys = np.arange(maxy, miny, -TARGET_RESOLUTION_M)
     xx, yy = np.meshgrid(xs, ys)
     height, width = xx.shape
 
     coords = np.column_stack([xx.ravel(), yy.ravel()])
     transform = from_bounds(minx, miny, maxx, maxy, width, height)
 
-    log.info(f"  Grid: {height} rows × {width} cols = {height*width:,} cells")
-    log.info(f"  Extent: ({minx:.0f}, {miny:.0f}) → ({maxx:.0f}, {maxy:.0f}) [EPSG:2953]")
+    log.info(f"  Grid: {height} rows x {width} cols = {height*width:,} cells")
+    log.info(f"  Extent: ({minx:.0f}, {miny:.0f}) -> ({maxx:.0f}, {maxy:.0f}) [EPSG:2953]")
     return coords, transform, (height, width)
 
 
-def sample_all_rasters(coords: np.ndarray, transform, shape: tuple) -> pd.DataFrame:
-    """Sample all available rasters at grid point coordinates using fast warp reproject."""
+def sample_all_rasters(coords, transform, shape):
+    """Sample all reprojected rasters at grid point coordinates."""
     from rasterio.warp import reproject, Resampling
     raster_paths = sorted(RASTERS_DIR.glob("*.tif"))
 
     if not raster_paths:
-        log.warning(
-            "  No rasters found in reprojected dir. "
-            "Prediction will use NaN-filled columns for raster features."
-        )
+        log.warning("  No rasters found -- prediction will use NaN-filled raster features.")
         return pd.DataFrame()
 
     results = {}
     height, width = shape
-    log.info(f"  Sampling {len(raster_paths)} raster(s) at {len(coords):,} grid points using fast reproject ...")
+    log.info(f"  Sampling {len(raster_paths)} rasters at {len(coords):,} grid points ...")
 
     for rp in raster_paths:
         col = rp.stem.replace("_epsg2953", "")
@@ -127,13 +102,13 @@ def sample_all_rasters(coords: np.ndarray, transform, shape: tuple) -> pd.DataFr
             )
         results[col] = dest.ravel()
         valid = np.isfinite(results[col]).sum()
-        log.info(f"    {col:30s}: {valid:,} / {len(results[col]):,} valid")
+        log.info(f"    {col:40s}: {valid:,} / {len(results[col]):,} valid")
 
     return pd.DataFrame(results)
 
 
-def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply same derived features as engineer_features.py (inline)."""
+def apply_feature_engineering(df):
+    """Apply same derived features as engineer_features.py."""
     EPSILON = 1e-6
     tmi_col = "mag_tmi_nb_2013"
     fvd_col = "mag_fvd_nb_2013"
@@ -154,8 +129,8 @@ def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     k  = df.get("rad_k",  pd.Series(EPSILON, index=df.index)).fillna(EPSILON).values
     th = df.get("rad_th", pd.Series(EPSILON, index=df.index)).fillna(EPSILON).values
     u  = df.get("rad_u",  pd.Series(EPSILON, index=df.index)).fillna(EPSILON).values
-    df["rad_k_th"] = k / np.where(th < EPSILON, EPSILON, th)
-    df["rad_u_th"] = u / np.where(th < EPSILON, EPSILON, th)
+    df["rad_k_th"] = k  / np.where(th < EPSILON, EPSILON, th)
+    df["rad_u_th"] = u  / np.where(th < EPSILON, EPSILON, th)
     df["rad_th_k"] = th / np.where(k  < EPSILON, EPSILON, k)
 
     for col in ["zn_ppm", "pb_ppm", "cu_ppm", "ag_ppm", "au_ppb", "as_ppm"]:
@@ -164,49 +139,31 @@ def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
         df[f"log_{col}"] = np.where(
             df[col].isna(), np.nan, np.log10(np.clip(df[col], EPSILON, None))
         )
-
     return df
 
 
-def predict_and_write(
-    model,
-    coords: np.ndarray,
-    transform,
-    shape: tuple,
-    feature_names: list,
-    model_name: str
-) -> Path:
+def predict_and_write(model, grid_df, feature_names, imputer,
+                      model_name, out_path, shape, transform):
     """Run prediction and write GeoTIFF."""
-    log.info(f"\n[Prediction — {model_name}]")
+    log.info(f"\n[Prediction -- {model_name}]")
 
-    # Sample rasters
-    grid_df = sample_all_rasters(coords, transform, shape)
-    grid_df = apply_feature_engineering(grid_df)
-
-    # Align to training features
-    imputer = joblib.load(DATASET_DIR / "imputer.joblib")
     for col in feature_names:
         if col not in grid_df.columns:
             grid_df[col] = np.nan
 
     X_grid = imputer.transform(grid_df[feature_names].values.astype(np.float32))
 
-    # Batch prediction (avoids RAM issues on large grids)
     BATCH = 50_000
     n     = len(X_grid)
     probs = np.full(n, np.nan, dtype=np.float32)
 
     log.info(f"  Predicting {n:,} cells in batches of {BATCH:,} ...")
     for i in range(0, n, BATCH):
-        batch     = X_grid[i:i+BATCH]
-        probs[i:i+BATCH] = model.predict_proba(batch)[:, 1]
+        probs[i:i+BATCH] = model.predict_proba(X_grid[i:i+BATCH])[:, 1]
 
-    # Reshape to raster
     prob_grid = probs.reshape(shape).astype(np.float32)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write GeoTIFF
-    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = PROSPECTIVITY_TIFF
     with rasterio.open(
         out_path, "w",
         driver="GTiff",
@@ -223,40 +180,64 @@ def predict_and_write(
         dst.write(prob_grid, 1)
         dst.update_tags(
             model=model_name,
-            description="VMS Prospectivity — Bathurst Mining Camp",
+            description="VMS Prospectivity -- Bathurst Mining Camp",
             units="Probability (0-1)",
             crs=str(CRS_TARGET),
             resolution_m=str(TARGET_RESOLUTION_M)
         )
 
-    log.info(f"  ✅ Prospectivity map saved → {out_path}")
-    log.info(f"  Probability range: {np.nanmin(probs):.4f} – {np.nanmax(probs):.4f}")
-    log.info(f"  High-probability cells (>0.7): {(probs > 0.7).sum():,}")
+    log.info(f"  Saved -> {out_path.name}")
+    log.info(f"  Probability range  : {np.nanmin(probs):.4f} - {np.nanmax(probs):.4f}")
+    log.info(f"  Median probability : {np.nanmedian(probs):.4f}")
+    log.info(f"  High-prob (>0.7)   : {(probs > 0.7).sum():,} cells")
+    log.info(f"  Mod-prob  (>0.5)   : {(probs > 0.5).sum():,} cells  ({100*(probs > 0.5).mean():.1f}%)")
     return out_path
 
 
 def main():
-    log.info("═══ Full-Extent Prospectivity Prediction ═══")
+    log.info("=== Full-Extent Prospectivity Prediction -- RF and XGBoost ===")
 
-    # Load best model + feature list
-    model, model_name = select_best_model()
     feature_names = pd.read_csv(
         DATASET_DIR / "feature_names.csv", header=None
     ).squeeze().tolist()
+    imputer = joblib.load(DATASET_DIR / "imputer.joblib")
+    log.info(f"  Feature columns: {len(feature_names)}")
 
-    # Build prediction grid
-    log.info("\n[Building 100m prediction grid over BMC extent]")
+    log.info("\n[Building 100 m prediction grid over BMC extent]")
     coords, transform, shape = build_prediction_grid()
 
-    # Predict and write
-    out_tiff = predict_and_write(
-        model, coords, transform, shape, feature_names, model_name
-    )
+    log.info("\n[Sampling geophysical rasters (once, shared across models)]")
+    grid_df_base = sample_all_rasters(coords, transform, shape)
+    grid_df_base = apply_feature_engineering(grid_df_base)
+
+    outputs = {}
+    for model_name, model_path, out_tiff in MODELS_TO_RUN:
+        if not model_path.exists():
+            log.warning(f"  Model not found: {model_path} -- skipping {model_name}")
+            continue
+        model = joblib.load(model_path)
+        log.info(f"  Loaded {model_name} from {model_path.name}")
+        tiff = predict_and_write(
+            model=model,
+            grid_df=grid_df_base.copy(),
+            feature_names=feature_names,
+            imputer=imputer,
+            model_name=model_name,
+            out_path=out_tiff,
+            shape=shape,
+            transform=transform,
+        )
+        outputs[model_name] = tiff
+
+    log.info("\n=== Output Summary ===")
+    for name, path in outputs.items():
+        log.info(f"  {name:15s}: {path.name}")
 
     log.info(
-        f"\n✅ Complete. Open {out_tiff} in QGIS/ArcGIS for drill target review.\n"
-        "   Run next: python pipeline/05_explainability/shap_analysis.py\n"
-        "   Run next: python pipeline/04_prospectivity_map/export_map.py"
+        "\nNext steps:\n"
+        "  python pipeline/03_training/success_rate_curve.py\n"
+        "  python pipeline/04_prospectivity_map/export_map.py\n"
+        "  python pipeline/05_explainability/shap_analysis.py"
     )
 
 

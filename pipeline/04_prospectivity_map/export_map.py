@@ -26,7 +26,7 @@ from matplotlib.patches import Patch
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
-    OUTPUTS_DIR, PROSPECTIVITY_TIFF,
+    OUTPUTS_DIR, RF_PROSPECTIVITY_TIFF,
     VMS_LABELS_GPKG, CRS_TARGET
 )
 
@@ -47,12 +47,12 @@ PROSPECT_CMAP = mcolors.LinearSegmentedColormap.from_list(
 
 def load_prospectivity_raster():
     """Load the GeoTIFF and mask nodata."""
-    if not PROSPECTIVITY_TIFF.exists():
+    if not RF_PROSPECTIVITY_TIFF.exists():
         raise FileNotFoundError(
-            f"Prospectivity raster not found: {PROSPECTIVITY_TIFF}\n"
+            f"RF prospectivity raster not found: {RF_PROSPECTIVITY_TIFF}\n"
             "Run: python pipeline/04_prospectivity_map/predict_full_extent.py"
         )
-    with rasterio.open(PROSPECTIVITY_TIFF) as src:
+    with rasterio.open(RF_PROSPECTIVITY_TIFF) as src:
         data    = src.read(1, masked=True)
         transform = src.transform
         bounds  = src.bounds
@@ -133,12 +133,12 @@ def export_png(data, transform, bounds, deposits):
     )
 
     fig.tight_layout()
-    out_png = OUTPUTS_DIR / "bmc_prospectivity_map.png"
+    out_png = OUTPUTS_DIR / "rf_prospectivity_map.png"
     fig.savefig(out_png, dpi=200, bbox_inches="tight", facecolor="#0f172a")
     log.info(f"  ✅ PNG saved → {out_png}")
 
     # High-res PDF for manuscript
-    out_pdf = OUTPUTS_DIR / "bmc_prospectivity_map_hires.pdf"
+    out_pdf = OUTPUTS_DIR / "rf_prospectivity_map_hires.pdf"
     fig.savefig(out_pdf, dpi=300, bbox_inches="tight", facecolor="#0f172a")
     log.info(f"  ✅ PDF saved → {out_pdf}")
     plt.close(fig)
