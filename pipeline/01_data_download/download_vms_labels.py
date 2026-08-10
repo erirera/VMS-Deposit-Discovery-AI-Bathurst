@@ -422,6 +422,8 @@ def generate_pseudo_absences_dissimilar(
     scaler = StandardScaler().fit(F_dep_clean)
     F_dep_std  = scaler.transform(F_dep_clean)  # (n_deposits, p)
     F_cand_std = scaler.transform(F_clean)       # (N_cand, p)
+    F_cand_std = np.nan_to_num(F_cand_std, nan=0.0)
+    F_dep_std  = np.nan_to_num(F_dep_std, nan=0.0)
 
     # ── Mahalanobis distance from deposit centroid ────────────────────────────
     dep_centroid = F_dep_std.mean(axis=0)  # (p,)
@@ -506,7 +508,10 @@ def generate_pseudo_absences_dissimilar(
     records = [
         {
             "hole_id": f"PSA_{i + 1:03d}",
+            "geonb_objectid": None,
+            "assessment_report_no": "",
             "depth_m": 0.0,
+            "year_drilled": "",
             "label": 0,
             "source": "pseudo_absence_dissimilar",
             "mahal_dist": float(md_sel[i]),
@@ -625,10 +630,19 @@ def main():
         
         records = []
         for idx_h, row in barren_sample.iterrows():
-            hole_id = row.get("hole_id") or row.get("name") or row.get("objectid") or f"BH_GEONB_{idx_h}"
+            hole_name = row.get("label") or row.get("hole_id") or row.get("name") or f"DH_{row.get('objectid', idx_h)}"
+            obj_id = row.get("objectid", idx_h)
+            depth = row.get("length_m") or row.get("depth_m", 0.0)
+            depth_val = float(depth) if pd.notna(depth) else 0.0
+            rept_no = str(row.get("rept_no", "")) if pd.notna(row.get("rept_no")) else ""
+            year_drilled = str(row.get("yeardrille", "")) if pd.notna(row.get("yeardrille")) else ""
+            
             records.append({
-                "hole_id": str(hole_id),
-                "depth_m": float(row.get("depth_m", 0.0) if pd.notna(row.get("depth_m")) else 0.0),
+                "hole_id": str(hole_name),
+                "geonb_objectid": int(obj_id) if pd.notna(obj_id) else idx_h,
+                "assessment_report_no": rept_no,
+                "depth_m": depth_val,
+                "year_drilled": year_drilled,
                 "label": 0,
                 "source": "barren_hole_geonb",
                 "geometry": row.geometry

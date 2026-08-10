@@ -1,0 +1,70 @@
+import geopandas as gpd
+
+van_staal_45 = [
+    ("Key Anacon", "Key Anacon", "Mined out Zn-Pb-Cu VMS deposit"),
+    ("Key Anacon East", "Key Anacon East", "Zn-Pb-Cu massive sulfide zone"),
+    ("Brunswick Number 12", "Brunswick No. 12", "World-class stratiform Zn-Pb-Cu-Ag deposit (230 Mt)"),
+    ("Brunswick Northend", "Brunswick North End Zone", "Northern extension of Brunswick horizon"),
+    ("Headway", "Headway", "Zn-Pb exhalite occurrence"),
+    ("Pabineau", "Pabineau Lake", "Polymetallic VMS horizon"),
+    ("Brunswick Number 6", "Brunswick No. 6", "Stratiform Zn-Pb-Cu-Ag open pit producer"),
+    ("Austin Brook", "Austin Brook", "Historic iron formation & VMS exhalite horizon"),
+    ("Flat Landing Brook", "Flat Landing Brook", "VMS-exhalite horizon"),
+    ("Captain North Extension", "Captain North Extension", "Zn-Pb-Cu massive sulfide extension"),
+    ("Captain", "Captain", "Zn-Pb polymetallic VMS deposit"),
+    ("Louvicourt", "Louvicourt Deposit", "Zn-Pb-Cu stratiform VMS zone"),
+    ("Taylor Brook", "Taylor Brook Road", "Zn-Pb-Ag VMS horizon"),
+    ("Nepisiguit \"A\"", "Nepisiguit A", "Stratiform Zn-Pb deposit"),
+    ("Nepisiguit \"B\"", "Nepisiguit Brook North", "Zn-Pb exhalite horizon"),
+    ("Nepisiguit \"C\"", "Nepisiguit C", "Zn-Pb massive sulfide deposit"),
+    ("Heath Steele B-5 Zone", "Heath Steele B5 zone", "Cu-Zn lens (Heath Steele camp)"),
+    ("Heath Steele B Zone", "Heath Steele B zone", "Main Zn-Pb-Cu-Ag producer lens"),
+    ("Heath Steele ACD Zones", "Heath Steele ACD zone", "Stratiform Zn-Pb-Cu lenses"),
+    ("Heath Steele C North", "Heath Steele C North", "Northern extension lens"),
+    ("Heath Steele E Zone", "Heath Steele E zone", "Zn-Pb massive sulfide lens"),
+    ("Heath Steele HC-4", "Heath Steele H4 Zone", "Copper-rich stringer & sulfide lens"),
+    ("Heath Steele West Grid", "Heath Steele West Grid zone", "Western perimeter VMS lens"),
+    ("Heath Steele H-2 Zone", "Heath Steele H2 Zone", "Zn-Pb massive sulfide lens"),
+    ("Heath Steele N-5", "Heath Steele N-5", "Northwestern VMS lens"),
+    ("Stratmat Main", "Stratmat Main", "Main Zn-Pb polymetallic zone"),
+    ("Stratmat Central", "Stratmat Central North", "Central Zn-Pb massive sulfide lens"),
+    ("Stratmat Boundary", "Stratmat Boundary West", "Boundary Zn-Pb-Cu zone"),
+    ("Stratmat S-1", "Stratmat S-1", "S-1 Zn-Pb polymetallic lens"),
+    ("Stratmat West", "Stratmat West Stringer Zone", "Western Cu stringer & sulfide zone"),
+    ("Canoe Landing Lake", "Canoe Landing Lake", "Large stratiform Zn-Pb-Cu-Au VMS deposit"),
+    ("Rocky Turn", "Rocky Turn", "High-grade Ag-Au rich VMS exhalite body"),
+    ("Armstrong B", "Armstrong B", "Zn-Pb massive sulfide deposit"),
+    ("Armstrong A", "Armstrong A", "Zn-Pb-Cu stratiform deposit"),
+    ("Wedge", "Wedge", "Historic Cu-Zn mine deposit"),
+    ("Orvan Brook", "Orvan Brook", "Galena-rich Zn-Pb-Ag VMS deposit"),
+    ("Chester", "Chester", "Major Cu-rich stringer & VMS deposit"),
+    ("McMaster", "McMaster", "Zn-Cu VMS deposit"),
+    ("Caribou", "Caribou", "4.5 Mt @ 6.5% Zn stratiform deposit"),
+    ("Camel Back", "Camel Back Mountain", "Zn-Pb-Cu VMS deposit"),
+    ("Halfmile Lake North", "Half Mile Lake North", "Upper high-grade Ag-Zn-Pb VMS lens"),
+    ("Halfmile Lake", "Half Mile Lake", "Deep Ag-rich stratiform VMS deposit"),
+    ("Murray Brook", "Murray Brook", "Au-rich VMS deposit"),
+    ("Devil's Elbow", "Devils Elbow", "Cu-Zn VMS deposit"),
+    ("Restigouche", "Restigouche C4", "Cu-Zn-Pb stratiform deposit")
+]
+
+occ = gpd.read_file('data/raw/geonb/nb_mineral_occurrences.gpkg')
+occ_wgs84 = occ.to_crs(epsg=4326)
+
+lines = []
+lines.append("VMS_DEPOSITS = [")
+lines.append("    # Name,                            Lon,       Lat,    Notes")
+for vs_name, search_alias, notes in van_staal_45:
+    m = occ[occ['name'].str.contains(search_alias, case=False, na=False)]
+    best = m.iloc[0]
+    idx_best = m.index[0]
+    pt = occ_wgs84.loc[idx_best].geometry
+    name_escaped = vs_name.replace('"', '\\"')
+    lines.append(f'    ("{name_escaped}", {pt.x:11.4f}, {pt.y:8.4f}, "{notes}"),')
+lines.append("]")
+
+code_str = "\n".join(lines)
+print(code_str)
+
+with open("C:/Users/delef/.gemini/antigravity-ide/brain/9cebb957-1ab6-461a-9133-799fe4fdae81/scratch/vms_array_code.py", "w") as f:
+    f.write(code_str)
