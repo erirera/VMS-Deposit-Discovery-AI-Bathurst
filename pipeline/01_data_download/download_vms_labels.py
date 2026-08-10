@@ -601,11 +601,13 @@ def main():
         dh_gdf = gpd.read_file(geonb_dh_path)
         dh_gdf = dh_gdf.to_crs(CRS_TARGET) if dh_gdf.crs != CRS_TARGET else dh_gdf
         
-        # Get active BMC raster bounds from reference reprojected raster
-        reproj_dir = PROCESSED_DIR / "rasters_reprojected"
-        tifs = sorted(reproj_dir.glob("*.tif")) if reproj_dir.exists() else []
-        if tifs:
-            with rasterio.open(tifs[0]) as src:
+        # Get active BMC study area raster bounds (mag_rmi_bmc_combined1.tif)
+        master_bmc_tif = RAW_DIR / "rasters" / "mag_rmi_bmc_combined1.tif"
+        reproj_mag = PROCESSED_DIR / "rasters_reprojected" / "mag_rmi_bmc_combined1.tif"
+        ref_tif = reproj_mag if reproj_mag.exists() else (master_bmc_tif if master_bmc_tif.exists() else None)
+        
+        if ref_tif:
+            with rasterio.open(ref_tif) as src:
                 b = src.bounds
                 xmin, xmax = b.left, b.right
                 ymin, ymax = b.bottom, b.top
