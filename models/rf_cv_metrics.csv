@@ -1,2 +1,2 @@
 roc_auc_mean,roc_auc_std,avg_prec_mean,avg_prec_std,balanced_acc_mean,balanced_acc_std,best_params
-0.9099930677758226,0.060131924708192425,0.6881156286470504,0.128186850159282,0.7565552178318136,0.1033371395470609,"{'n_estimators': 456, 'max_depth': 14, 'min_samples_leaf': 4, 'max_features': 'log2'}"
+0.9273991403609079,0.046828434337856426,0.740329959182306,0.13515224616543983,0.8350019444309413,0.05220483474633239,"{'n_estimators': 597, 'max_depth': 23, 'min_samples_leaf': 1, 'max_features': 'log2'}"
