@@ -39,7 +39,7 @@ from scipy.spatial.distance import mahalanobis
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
-    LABELS_DIR, VMS_LABELS_GPKG, BARREN_LABELS_GPKG,
+    LABELS_DIR, RAW_DIR, VMS_LABELS_GPKG, BARREN_LABELS_GPKG,
     CRS_SOURCE, CRS_TARGET, POSITIVE_BUFFER_M,
     PSEUDO_ABSENCE_CANDIDATE_SPACING_M, PSEUDO_ABSENCE_MIN_BUFFER_M,
     PSEUDO_ABSENCE_DISSIM_QUANTILE, PSEUDO_ABSENCE_N_SPATIAL_STRATA,
@@ -59,51 +59,51 @@ log = logging.getLogger(__name__)
 # Coordinates in WGS84 (Longitude, Latitude). All are confirmed VMS systems.
 VMS_DEPOSITS = [
     # Name,                            Lon,       Lat,    Notes
-    ("Brunswick No. 12",              -65.8520,  47.4720, "World-class; 230 Mt @ 8.0% Zn"),
-    ("Brunswick No. 6",               -65.7800,  47.4400, "Stratiform Zn-Pb-Cu-Ag"),
-    ("Key Anacon",                    -65.7500,  47.4100, "Mined out"),
-    ("Murray Brook",                  -65.6900,  47.3800, "Au-rich VMS"),
-    ("Caribou",                       -65.5800,  47.3600, "4.5 Mt @ 6.5% Zn"),
-    ("Heath Steele (BHNS, B&E)",      -65.9000,  47.5600, "Multiple lenses"),
-    ("Restigouche",                   -67.0300,  47.9800, "Cu-Zn-Pb"),
-    ("Orvan Brook",                   -65.8200,  47.3300, "Galena-rich"),
-    ("Stratmat North",                -65.7100,  47.4300, "Zn-Pb polymetallic"),
-    ("Halfmile Lake",                 -65.9200,  47.5000, "Deep deposit; Ag-rich"),
-    ("Wedge",                         -65.8800,  47.4900, "Cu-Zn"),
-    ("Skiff Lake",                    -66.2300,  47.6200, "historic Cu producer"),
-    ("Burnt Hill (Tin/W adjacent)",   -66.8100,  46.8900, "Sn-W; atypical BMC"),
-    ("Flat Landing Brook",            -66.6500,  47.7500, "VMS-exhalite"),
-    ("Nigadoo River",                 -65.6600,  47.6800, "Zn-Pb"),
-    ("Flett",                         -65.9800,  47.5300, "Small Cu-Zn"),
-    ("Quaco",                         -65.5200,  45.3400, "South NB VMS"),
-    ("Portage",                       -66.3200,  47.6800, "Small Zn-Pb"),
-    ("Elmtree",                       -65.3700,  47.9000, "Northern BMC"),
-    ("Boudreau",                      -66.1700,  47.5900, "Cu-Zn"),
-    ("Pine Cove",                     -64.8500,  45.9700, "Au-Ag-VMS"),
-    ("Forsythe",                      -65.7300,  47.3900, "Zn-Pb"),
-    ("McBean Lake",                   -66.1200,  47.6500, "Cu-Zn"),
-    ("Middle Landing",                -66.5800,  47.7200, "Cu-Zn-Pb exhalite"),
-    ("Blue Bell-Canaan",              -65.8400,  47.4500, "Historic Ag"),
-    ("Captain",                       -65.9600,  47.5100, "Zn-Pb"),
-    ("Sabel",                         -66.0100,  47.5500, "Cu-rich"),
-    ("Reid",                          -66.0800,  47.5700, "Small Zn-Pb"),
-    ("Clearwater",                    -66.2800,  47.6000, "Zn"),
-    ("Anderson Stillwater",           -65.8700,  47.4600, "Cu-Zn"),
-    ("Crowe Mountain",                -66.3600,  47.7100, "Cu"),
-    ("Teahan",                        -65.7600,  47.4200, "Zn-Pb"),
-    ("Spruce Lake",                   -66.4500,  47.7000, "Zn-Cu"),
-    ("Lost Lake",                     -66.3000,  47.6400, "Cu"),
-    ("Mitchell",                      -65.8600,  47.4800, "Zn-Pb"),
-    ("Lake George (Sb adjacent)",     -67.0200,  46.0100, "Sb-Au; different style"),
-    ("Nicholas-Denys",                -66.5200,  47.7400, "Zn-Pb-Cu"),
-    ("Clearwater West",               -66.3100,  47.6100, "Zn"),
-    ("Lyndhurst",                     -65.6200,  47.3500, "Cu-Zn"),
-    ("Nepisiguit Falls",              -65.9400,  47.5800, "Cu-Zn exhalite"),
-    ("Dry Creek",                     -66.7500,  47.8500, "Zn-Pb"),
-    ("Poplar Mountain",               -65.9000,  47.4300, "Cu"),
-    ("Silver Lake",                   -66.1500,  47.5500, "Ag-Pb"),
-    ("Menneval",                      -66.0000,  47.5200, "Cu-Zn"),
-    ("Clifton",                       -65.8000,  47.4600, "Zn-rich VMS"),
+    ("Key Anacon",                    -65.6977,  47.4355, "Mined out Zn-Pb-Cu VMS deposit"),
+    ("Key Anacon East",               -65.6852,  47.4464, "Zn-Pb-Cu massive sulfide zone"),
+    ("Brunswick Number 12",           -65.8922,  47.4789, "World-class stratiform Zn-Pb-Cu-Ag deposit (230 Mt)"),
+    ("Brunswick Northend",            -65.8933,  47.4925, "Northern extension of Brunswick horizon"),
+    ("Headway",                       -65.8991,  47.4453, "Zn-Pb exhalite occurrence"),
+    ("Pabineau",                      -65.7642,  47.5097, "Polymetallic VMS horizon"),
+    ("Brunswick Number 6",            -65.8225,  47.4084, "Stratiform Zn-Pb-Cu-Ag open pit producer"),
+    ("Austin Brook",                  -65.8230,  47.3978, "Historic iron formation & VMS exhalite horizon"),
+    ("Flat Landing Brook",            -65.8761,  47.3811, "VMS-exhalite horizon"),
+    ("Captain North Extension",       -65.8847,  47.2956, "Zn-Pb-Cu massive sulfide extension"),
+    ("Captain",                       -65.8783,  47.2836, "Zn-Pb polymetallic VMS deposit"),
+    ("Louvicourt",                    -65.9300,  47.3922, "Zn-Pb-Cu stratiform VMS zone"),
+    ("Taylor Brook",                  -65.8252,  47.3470, "Zn-Pb-Ag VMS horizon"),
+    ("Nepisiguit \"A\"",              -66.0305,  47.3789, "Stratiform Zn-Pb deposit"),
+    ("Nepisiguit \"B\"",              -65.9172,  47.3559, "Zn-Pb exhalite horizon"),
+    ("Nepisiguit \"C\"",              -66.0414,  47.3736, "Zn-Pb massive sulfide deposit"),
+    ("Heath Steele B-5 Zone",         -66.0269,  47.2995, "Cu-Zn lens (Heath Steele camp)"),
+    ("Heath Steele B Zone",           -66.0372,  47.3003, "Main Zn-Pb-Cu-Ag producer lens"),
+    ("Heath Steele ACD Zones",        -66.0805,  47.2909, "Stratiform Zn-Pb-Cu lenses"),
+    ("Heath Steele C North",          -66.0850,  47.2960, "Northern extension lens"),
+    ("Heath Steele E Zone",           -66.0645,  47.2995, "Zn-Pb massive sulfide lens"),
+    ("Heath Steele HC-4",             -66.0980,  47.2859, "Copper-rich stringer & sulfide lens"),
+    ("Heath Steele West Grid",        -66.1072,  47.2842, "Western perimeter VMS lens"),
+    ("Heath Steele H-2 Zone",         -66.1166,  47.2617, "Zn-Pb massive sulfide lens"),
+    ("Heath Steele N-5",              -66.1347,  47.3047, "Northwestern VMS lens"),
+    ("Stratmat Main",                 -66.1052,  47.3197, "Main Zn-Pb polymetallic zone"),
+    ("Stratmat Central",              -66.1150,  47.3147, "Central Zn-Pb massive sulfide lens"),
+    ("Stratmat Boundary",             -66.1403,  47.3072, "Boundary Zn-Pb-Cu zone"),
+    ("Stratmat S-1",                  -66.1158,  47.3131, "S-1 Zn-Pb polymetallic lens"),
+    ("Stratmat West",                 -66.1402,  47.3056, "Western Cu stringer & sulfide zone"),
+    ("Canoe Landing Lake",            -66.1069,  47.4114, "Large stratiform Zn-Pb-Cu-Au VMS deposit"),
+    ("Rocky Turn",                    -66.0711,  47.6328, "High-grade Ag-Au rich VMS exhalite body"),
+    ("Armstrong B",                   -66.0575,  47.5836, "Zn-Pb massive sulfide deposit"),
+    ("Armstrong A",                   -66.0425,  47.5995, "Zn-Pb-Cu stratiform deposit"),
+    ("Wedge",                         -66.1290,  47.3963, "Historic Cu-Zn mine deposit"),
+    ("Orvan Brook",                   -66.1225,  47.6306, "Galena-rich Zn-Pb-Ag VMS deposit"),
+    ("Chester",                       -66.2242,  47.1006, "Major Cu-rich stringer & VMS deposit"),
+    ("McMaster",                      -66.2366,  47.6092, "Zn-Cu VMS deposit"),
+    ("Caribou",                       -66.2938,  47.5586, "4.5 Mt @ 6.5% Zn stratiform deposit"),
+    ("Camel Back",                    -66.2700,  47.5053, "Zn-Pb-Cu VMS deposit"),
+    ("Halfmile Lake North",           -66.3100,  47.3180, "Upper high-grade Ag-Zn-Pb VMS lens"),
+    ("Halfmile Lake",                 -66.3180,  47.3070, "Deep Ag-rich stratiform VMS deposit"),
+    ("Murray Brook",                  -66.4316,  47.5253, "Au-rich VMS deposit"),
+    ("Devil's Elbow",                 -66.4016,  47.4297, "Cu-Zn VMS deposit"),
+    ("Restigouche",                   -66.5677,  47.5059, "Cu-Zn-Pb stratiform deposit"),
 ]
 
 # ── Compiled Barren Drill Holes ────────────────────────────────────────────────
@@ -277,24 +277,29 @@ def generate_pseudo_absences_dissimilar(
     )
     log.info(f"  Rasters available: {len(raster_paths)}")
 
-    # ── Use the first raster to define bounds and valid-data mask ─────────────
-    ref_path = raster_paths[0]
-    with rasterio.open(ref_path) as src:
-        bounds   = src.bounds
-        ref_crs  = src.crs
-        nodata   = src.nodata if src.nodata is not None else -9999
-        res      = src.res  # (x_res, y_res) in metres
+    # ── Use BMC study area raster grid extent (mag_rmi_bmc_combined1.tif) ───────────
+    bmc_raster_path = RAW_DIR / "rasters" / "mag_rmi_bmc_combined1.tif"
+    if bmc_raster_path.exists():
+        with rasterio.open(bmc_raster_path) as bmc_src:
+            bmc_b = bmc_src.bounds
+            grid_left, grid_right = bmc_b.left, bmc_b.right
+            grid_bottom, grid_top = bmc_b.bottom, bmc_b.top
+            ref_crs = bmc_src.crs
+    else:
+        grid_left, grid_right = 2481060.0, 2576340.0
+        grid_bottom, grid_top = 7551180.0, 7635540.0
+        ref_crs = CRS_TARGET
 
-    # ── Build dense candidate grid ────────────────────────────────────────────
-    xs = np.arange(bounds.left  + candidate_spacing_m / 2,
-                   bounds.right - candidate_spacing_m / 2,
+    # ── Build dense candidate grid strictly within BMC study area ─────────────
+    xs = np.arange(grid_left  + candidate_spacing_m / 2,
+                   grid_right - candidate_spacing_m / 2,
                    candidate_spacing_m)
-    ys = np.arange(bounds.bottom + candidate_spacing_m / 2,
-                   bounds.top   - candidate_spacing_m / 2,
+    ys = np.arange(grid_bottom + candidate_spacing_m / 2,
+                   grid_top   - candidate_spacing_m / 2,
                    candidate_spacing_m)
     xx, yy = np.meshgrid(xs, ys)
     coords = np.column_stack([xx.ravel(), yy.ravel()])  # (N, 2)
-    log.info(f"  Candidate grid: {len(coords):,} points at {candidate_spacing_m} m spacing")
+    log.info(f"  Candidate grid (BMC Study Area): {len(coords):,} points at {candidate_spacing_m} m spacing")
 
     # ── Sample all rasters at candidate locations (VECTORISED) ────────────────
     # Read each raster as a full array once, then index by row/col.
@@ -583,21 +588,68 @@ def main():
     # ── Negative labels ──────────────────────────────────────────────────────
     log.info("\nBuilding hybrid negative labels (125 barren holes + 125 pseudo-absences) ...")
     
-    # 1. Sample 125 barren drill holes
-    random.seed(42)
-    sampled_barren_holes = random.sample(BARREN_HOLES, 125)
+    # 1. Sample 125 barren drill holes strictly inside the BMC study area raster grid
+    geonb_dh_path = RAW_DIR / "geonb" / "nb_drill_holes.gpkg"
     
-    records = []
-    for hole_id, lon, lat, depth_m in sampled_barren_holes:
-        records.append({
-            "hole_id": hole_id,
-            "depth_m": depth_m,
-            "label": 0,
-            "source": "barren_hole",
-            "geometry": Point(lon, lat)
-        })
-    barren_drill_gdf = gpd.GeoDataFrame(records, crs=CRS_SOURCE).to_crs(CRS_TARGET)
-    log.info(f"  Sampled {len(barren_drill_gdf)} barren drill holes")
+    if geonb_dh_path.exists():
+        log.info(f"  Loading GeoNB drill hole collars from {geonb_dh_path.name} ...")
+        dh_gdf = gpd.read_file(geonb_dh_path)
+        dh_gdf = dh_gdf.to_crs(CRS_TARGET) if dh_gdf.crs != CRS_TARGET else dh_gdf
+        
+        # Get active BMC raster bounds from reference reprojected raster
+        reproj_dir = PROCESSED_DIR / "rasters_reprojected"
+        tifs = sorted(reproj_dir.glob("*.tif")) if reproj_dir.exists() else []
+        if tifs:
+            with rasterio.open(tifs[0]) as src:
+                b = src.bounds
+                xmin, xmax = b.left, b.right
+                ymin, ymax = b.bottom, b.top
+        else:
+            xmin, xmax = 2481060.0, 2576340.0
+            ymin, ymax = 7551180.0, 7635540.0
+            
+        # Filter for collars strictly inside BMC raster grid
+        inside_mask = (
+            (dh_gdf.geometry.x >= xmin) & (dh_gdf.geometry.x <= xmax) &
+            (dh_gdf.geometry.y >= ymin) & (dh_gdf.geometry.y <= ymax)
+        )
+        dh_inside = dh_gdf[inside_mask].copy()
+        
+        # Enforce minimum distance guard of 1,000 m from any positive VMS deposit
+        vms_union = vms_gdf.geometry.union_all()
+        dists = dh_inside.geometry.distance(vms_union)
+        barren_candidates = dh_inside[dists >= 1000.0].copy()
+        
+        # Reproducible random sampling
+        barren_sample = barren_candidates.sample(n=125, random_state=42).copy()
+        
+        records = []
+        for idx_h, row in barren_sample.iterrows():
+            hole_id = row.get("hole_id") or row.get("name") or row.get("objectid") or f"BH_GEONB_{idx_h}"
+            records.append({
+                "hole_id": str(hole_id),
+                "depth_m": float(row.get("depth_m", 0.0) if pd.notna(row.get("depth_m")) else 0.0),
+                "label": 0,
+                "source": "barren_hole_geonb",
+                "geometry": row.geometry
+            })
+        barren_drill_gdf = gpd.GeoDataFrame(records, crs=CRS_TARGET)
+        log.info(f"  Sampled {len(barren_drill_gdf)} barren drill hole collars strictly inside BMC raster bounds")
+    else:
+        log.warning("  GeoNB drill hole file not found; falling back to legacy barren sampling")
+        random.seed(42)
+        sampled_barren_holes = random.sample(BARREN_HOLES, 125)
+        records = []
+        for hole_id, lon, lat, depth_m in sampled_barren_holes:
+            records.append({
+                "hole_id": hole_id,
+                "depth_m": depth_m,
+                "label": 0,
+                "source": "barren_hole",
+                "geometry": Point(lon, lat)
+            })
+        barren_drill_gdf = gpd.GeoDataFrame(records, crs=CRS_SOURCE).to_crs(CRS_TARGET)
+        log.info(f"  Sampled {len(barren_drill_gdf)} barren drill holes")
     
     # 2. Generate 125 pseudo-absences selected by feature-space dissimilarity
     #    (Parsa & Cumani, 2025): maximise Mahalanobis distance from the VMS

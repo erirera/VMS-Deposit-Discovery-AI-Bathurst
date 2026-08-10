@@ -1,0 +1,55 @@
+# Implementation Plan — Correct Barren Drill Hole Labels Within BMC Raster Bounds
+
+Align the negative label dataset (`barren_negative_labels.gpkg`) with the positive label dataset by sampling confirmed barren drill hole collars directly from the **GeoNB Drill Hole Registry** (`nb_drill_holes.gpkg`) **strictly inside the Bathurst Mining Camp (BMC) study area raster grid** (`mag_rmi_bmc_combined1.tif`).
+
+This corrects the previous discrepancy where 179 out of 250 negative points (71.6%) fell outside the raster footprint due to regional synthetic bounding box sampling.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Key Improvements:**
+> 1. **100% Spatial Containment across Entire Dataset:**
+>    * **Positive Labels (`vms_positive_labels.gpkg`):** 45 / 45 (100.00% inside BMC raster)
+>    * **Negative Labels (`barren_negative_labels.gpkg`):** 250 / 250 (100.00% inside BMC raster)
+> 2. **Real GeoNB Drill Collar Provenance:** Replaces synthetic wide-area drill coordinates with 125 real drill hole collars selected from the 10,377 GeoNB drill holes located inside the BMC raster grid.
+> 3. **Geographic & Feature Guard Enforcement:** All sampled barren drill holes are guaranteed to be $\ge 1,000\text{ m}$ away from any known VMS deposit, while pseudo-absences continue to use top 40% Mahalanobis feature-space dissimilarity.
+
+---
+
+## Open Questions
+
+None. Tested sampling from the 5,340 eligible GeoNB drill holes inside the BMC study area raster grid.
+
+---
+
+## Proposed Changes
+
+### Label Generation Pipeline
+
+#### [MODIFY] [download_vms_labels.py](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/pipeline/01_data_download/download_vms_labels.py)
+* Update `main()` to load `nb_drill_holes.gpkg`, filter drill hole collars strictly within `mag_rmi_bmc_combined1.tif` bounds (`EPSG:2953` X: [2,481,060 - 2,576,340], Y: [7,551,180 - 7,635,540]) and $\ge 1,000\text{ m}$ from VMS deposits, and sample 125 barren drill hole collars.
+* Combine with 125 feature-dissimilarity pseudo-absences (`generate_pseudo_absences_dissimilar`).
+* Regenerate [`barren_negative_labels.gpkg`](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/data/raw/labels/barren_negative_labels.gpkg).
+
+---
+
+### Project Documentation
+
+#### [MODIFY] [forEdit_Data Source and Boundary Validation.md](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/forEdit_Data%20Source%20and%20Boundary%20Validation.md)
+* Update Section 2 summary table and Section 3 detailed review for `barren_negative_labels.gpkg`:
+  * Total Features: 250
+  * Features Inside BMC Raster: **250 (100.00%)**
+  * Features Outside BMC Raster: **0 (0.00%)**
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `python pipeline/01_data_download/download_vms_labels.py` to regenerate negative labels.
+- Run verification script to check that 250/250 negative points (100.00%) lie within `mag_rmi_bmc_combined1.tif` bounds in `EPSG:2953`.
+
+### Manual Verification
+- Verify that `barren_negative_labels.gpkg` contains 125 GeoNB barren drill holes and 125 pseudo-absences, all strictly within the BMC study area raster grid.

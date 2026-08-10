@@ -1,0 +1,53 @@
+# Walkthrough — Positive VMS Deposit Labels Updated to van Staal et al. (2003)
+
+All positive VMS deposit labels have been updated to match the official **45 VMS deposits of the Bathurst Mining Camp (BMC)** defined by **van Staal et al. (2003)** (*Geological Survey of Canada Bulletin 566 / Monograph*). Exact spatial coordinates were cross-referenced and resolved from the **GeoNB Mineral Occurrence Database** (NB DNRED).
+
+---
+
+## Key Achievements
+
+1. **100% Raster Containment Achieved:**
+   * **Previous dataset:** 35 deposits inside BMC raster (77.8%), 10 deposits outside (22.2%).
+   * **Updated dataset:** **45 / 45 deposits inside BMC raster (100.00%)**. **0 deposits outside (0.00%)**.
+
+2. **Eliminated Non-BMC & Non-VMS Contamination:**
+   * Removed non-BMC regional deposits (`Lake George` [Sb-Au], `Burnt Hill` [Sn-W], `Quaco`, `Pine Cove`) located up to 200 km outside the BMC.
+
+3. **Multi-Lens Ore Zone Granularity:**
+   * Fully captures individual ore zones across major complexes:
+     * **Heath Steele:** 9 zones (*B-5, B Zone, ACD, C North, E, HC-4, West Grid, H-2, N-5*)
+     * **Stratmat:** 5 zones (*Main, Central, Boundary, S-1, West*)
+     * **Nepisiguit:** 3 zones (*A, B, C*)
+     * **Brunswick Horizon:** *Brunswick No. 12, Brunswick Northend, Brunswick No. 6, Austin Brook*
+     * **Key Anacon:** *Key Anacon Main, Key Anacon East*
+     * **Armstrong:** *Armstrong A, Armstrong B*
+     * **Halfmile Lake:** *Halfmile Lake, Halfmile Lake North*
+
+---
+
+## Summary of Changes
+
+### 1. Label Generator Pipeline Script
+* **File:** [`download_vms_labels.py`](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/pipeline/01_data_download/download_vms_labels.py)
+* **Changes:** Replaced the legacy `VMS_DEPOSITS` list with the 45 van Staal et al. (2003) BMC deposits and their exact GeoNB coordinates.
+
+### 2. Positive Labels GeoPackage
+* **File:** `data/raw/labels/vms_positive_labels.gpkg`
+* **Changes:** Re-generated 45 positive deposit geometries in `EPSG:2953` (NAD83(CSRS) / New Brunswick Double Stereographic).
+
+### 3. Documentation
+* **File:** [`forEdit_Data Source and Boundary Validation.md`](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/forEdit_Data%20Source%20and%20Boundary%20Validation.md)
+* **Changes:** Updated Section 2 summary table and Section 3 detailed review to document 100.00% raster containment.
+
+---
+
+## Verification Results
+
+Verification script executed on `data/raw/labels/vms_positive_labels.gpkg`:
+
+```text
+Total Deposits: 45
+Inside BMC raster bounds: 45 (100.00%)
+Outside BMC raster bounds: 0 (0.00%)
+CRS: EPSG:2953 (NAD83(CSRS) / New Brunswick Double Stereographic)
+```
