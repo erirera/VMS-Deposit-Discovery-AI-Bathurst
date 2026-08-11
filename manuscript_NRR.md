@@ -122,7 +122,7 @@ A critical methodological challenge in MPM is the absence problem: unlike ecolog
 
 1. **Confirmed barren drill holes (n = 125):** Real exploration drill intercepts compiled from NB Geological Survey records that did not return economic VMS mineralization. These anchor the model to geologically verified barren environments (Nykänen et al., 2008; Parsa et al., 2023).
 
-2. **Feature-space dissimilar pseudo-absences (n = 125):** Candidate points generated across a dense 100 m grid spanning the active geophysical survey footprint, selected according to their **Mahalanobis distance** from the VMS deposit centroid in the multi-dimensional geophysical and geochemical feature space. This strategy directly operationalises the recommendation of Parsa & Cumani (2025), who demonstrate that geospatially dissimilar negative labels — selected to be maximally unlike deposits in feature space rather than merely distant in map space — consistently deliver improved classifier discrimination and exploration targeting efficiency. The Mahalanobis distance from each candidate point $\mathbf{c}$ to the deposit centroid $\boldsymbol{\mu}_{+}$ in standardised feature space is:
+2. **Feature-space dissimilar pseudo-absences (n = 125):** Candidate points generated across a dense 100 m grid spanning the active geophysical survey footprint, selected according to their **Mahalanobis distance** (Mahalanobis, 1936; Carranza, 2008) from the VMS deposit centroid in the multi-dimensional geophysical and geochemical feature space. This strategy operationalises the feature-space dissimilarity framework recommended by Parsa & Cumani (2025), who demonstrate that geospatially dissimilar negative labels — selected to be maximally unlike deposits in feature space rather than merely distant in map space — consistently deliver improved classifier discrimination and exploration targeting efficiency. The Mahalanobis distance from each candidate point $\mathbf{c}$ to the deposit centroid $\boldsymbol{\mu}_{+}$ in standardised feature space is:
 
 $$D_M(\mathbf{c}, \boldsymbol{\mu}_{+}) = \sqrt{(\mathbf{c} - \boldsymbol{\mu}_{+})^\top \boldsymbol{\Sigma}_{+}^{-1} (\mathbf{c} - \boldsymbol{\mu}_{+})}$$
 
@@ -372,6 +372,8 @@ Goodfellow, W. D., & McCutcheon, S. R. (2003). Geologic and genetic attributes o
 Harris, J. R., Behnia, P., & Percival, J. B. (2015). Gold prospectivity mapping of the Hope Bay volcanic belt, Nunavut, Canada. *Natural Resources Research*, *24*(2), 219–242. https://doi.org/10.1007/s11053-014-9255-y
 
 Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. *Advances in Neural Information Processing Systems*, *30*, 4765–4774.
+
+Mahalanobis, P. C. (1936). On the generalised distance in statistics. *Proceedings of the National Institute of Sciences of India*, *2*(1), 49–55.
 
 Maepa, F., Smith, R. S., & Tessema, A. (2021). Support vector machine and artificial neural network modelling of orogenic gold prospectivity mapping in the Swayze greenstone belt, Ontario, Canada. *Ore Geology Reviews*, *130*, 103968. https://doi.org/10.1016/j.oregeorev.2020.103968
 
