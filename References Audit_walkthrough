@@ -1,0 +1,32 @@
+# Walkthrough - Reference Compilation & Discoverability Audit
+
+Completed full compilation, discoverability audit, and metadata alignment for all **40 references** in [manuscript_NRR.md](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/manuscript_NRR.md).
+
+## Key Accomplishments
+
+1. **Complete Discoverability Audit:**
+   - Evaluated all 40 references against CrossRef, OpenAlex, Economic Geology Monograph 11, GSC Publications, IEEE, ACM, Elsevier, and Springer publication databases.
+   - Confirmed that 100% of cited works correspond to real, legitimate, and discoverable academic publications or monographs.
+
+2. **In-Text Citation Alignment:**
+   - Identified that `Zuo et al. (2019)` (*Earth-Science Reviews*) was present in the Reference list but missing an in-text citation in the body.
+   - Updated Section 1 (Introduction, line 29) of [manuscript_NRR.md](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/manuscript_NRR.md#L29) to include `(Harris et al., 2015; Carranza, 2017; Zuo et al., 2019)`.
+   - Verified that **40 out of 40 references (100%)** now map 1-to-1 with in-text citations.
+
+3. **Metadata & DOI Corrections:**
+   Updated 6 reference entries in Section 7 of [manuscript_NRR.md](file:///c:/Users/delef/.gemini/antigravity/bathurst%20VMS/VMS-Deposit-Discovery-AI-Bathurst/manuscript_NRR.md#L330):
+   - **Harris et al. (2015):** Corrected DOI string suffix to `https://doi.org/10.1007/s11053-014-9255-y`.
+   - **Maepa et al. (2021):** Corrected volume to **130**, article to **103968**, and DOI to `https://doi.org/10.1016/j.oregeorev.2020.103968`.
+   - **Parsa, M. (2022):** Updated DOI string suffix to `https://doi.org/10.1007/s11053-021-09964-z`.
+   - **Parsa et al. (2023):** Corrected published title to *Predictive modeling of prospectivity for VHMS mineral deposits, northeastern Bathurst Mining Camp, NB, Canada, using an ensemble regularization technique*, volume/pages to `32(1), 19–36`, and DOI to `https://doi.org/10.1007/s11053-022-10133-9`.
+   - **Thomas et al. (2003):** Updated citation record to SEG Monograph 11 (pp. 611–640, DOI `https://doi.org/10.5382/mono.11.36`).
+   - **SEG Monograph 11 DOIs:** Added explicit SEG Monograph 11 DOIs (`https://doi.org/10.5382/mono.11.xx`) for van Staal et al. (2003), Goodfellow & McCutcheon (2003), Rogers et al. (2003), Parkhill & Doiron (2003), and McCutcheon et al. (2003).
+
+---
+
+## Verification Results
+
+Executed automated audit script `verify_final_manuscript.py`:
+- **Total Reference Entries:** 40
+- **Uncited References Count:** 0
+- **Verification Status:** **100% PASS**
