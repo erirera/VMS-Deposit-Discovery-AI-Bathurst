@@ -73,7 +73,12 @@ Secondary features were engineered to capture mineralization criteria:
 Features containing more than 75% missing (null) values at label locations were excluded from model training to prevent numerical instability. Of the 17 raw geochemical elements, 4 (Bi, In, Tl, Mn) exceeded this threshold and were dropped; the remaining 13 raw elements were retained. Missing values in the retained features were imputed using median values.
 
 ### Class Balancing (SMOTE)
-To resolve the high class imbalance (45 VMS vs. 250 barren points), the Synthetic Minority Over-sampling Technique (SMOTE) was applied to the minority class (Chawla et al., 2002). SMOTE interpolates between nearest neighbors of the minority class in feature space to synthesize new positive instances, balancing the dataset to **250 positive and 250 negative samples** ($n=500$).
+To resolve the severe class imbalance (45 VMS vs. 250 barren points; $\approx 1:5.55$ ratio), the Synthetic Minority Over-sampling Technique (SMOTE; Chawla et al., 2002) was applied to the minority class prior to model training. Without over-sampling, standard classifiers optimize global accuracy by over-predicting the majority barren class, systematically suppressing minority deposit recall. Furthermore, spatial block cross-validation leaves only ~30–35 positive instances in training folds when an entire geographic sector is held out.
+
+SMOTE interpolates between $k$-nearest neighbors of the minority class in feature space:
+$$x_{\text{new}} = x_i + \lambda (x_{\text{neighbor}} - x_i), \quad \lambda \sim U(0, 1)$$
+
+Geologically, feature-space interpolation is valid because hydrothermal fluid circulation generates continuous physical and chemical gradients in host rocks and till (e.g., alteration halos, pathfinder plumes, and potential-field anomalies). Synthetic feature vectors represent plausible intermediate states along this prospectivity continuum. Crucially, to prevent data leakage, SMOTE is applied **strictly within training folds** during spatial cross-validation, balancing the dataset to **250 positive and 250 negative samples** ($N=500$) without contaminating the held-out validation folds.
 
 ### Spatial Block Validation
 To address spatial autocorrelation and prevent spatial data leakage, a 5-fold spatial block cross-validation scheme was implemented (Brenning, 2012). The study area was divided into distinct geographic blocks using spatial clustering. In each cross-validation fold, models were trained on four blocks and validated on the remaining spatial block, ensuring that training and test samples were geographically separated (Roberts et al., 2017).

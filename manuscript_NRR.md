@@ -64,9 +64,130 @@ Four deformation phases (D1–D4) under greenschist-facies conditions have profo
 
 The prospectivity mapping framework is structured as a multi-stage ML pipeline progressing from raw data compilation and grid-derivative computation to spatial machine learning and area-normalized validation (Fig. 2). The workflow comprises five key components: (1) data compilation and native-grid preprocessing; (2) compositional geochemical analysis; (3) feature extraction and engineering; (4) spatial block cross-validation and model training; and (5) full-extent mapping and interpretability.
 
-![Fig. 2 Schematic flowchart of the machine learning prospectivity mapping pipeline](/Users/delef/.gemini/antigravity/brain/fee87920-985b-47de-af6f-868d6a640943/workflow.png)
+```mermaid
+flowchart TD
 
-> *[Figure 2 near here]*
+%% ── PHASE 1: DATA COMPILATION ─────────────────────────────────────────────
+subgraph P1["Phase 1 · Multi-Source Geoscience Data Compilation & Alignment"]
+    direction LR
+    A1["**1A · Airborne Geophysics**
+    TMI · Bouguer Gravity · Radiometrics
+    Reprojected to EPSG:2953"]
+    A2["**1B · Till Geochemistry**
+    17 Pathfinder Elements (Ag Cu Pb Zn …)
+    2,753 Regional Sample Locations"]
+    A3["**1C · Deposit & Drill Database**
+    45 VMS Deposits (van Staal 2003)
+    GeoNB Barren Drill Intercepts"]
+end
+
+%% ── PHASE 2: PREPROCESSING ────────────────────────────────────────────────
+subgraph P2["Phase 2 · Mathematical Preprocessing & Feature Synthesis"]
+    direction LR
+    B1["**2A · Grid Derivatives**
+    Fourier-domain FVD · THG · TDR · AS
+    Radioelement Ratios (K/Th · Th/K · U/Th)"]
+    B2["**2B · Compositional Geochemistry**
+    CLR Transform · IDW 50 m Surfaces
+    PCA & FA Factor Scores (varimax)"]
+    B3["**2C · Master 100 m Raster Stack**
+    All derivatives resampled to 100 m grid
+    Log-transform · MEAS composite score"]
+end
+
+%% ── PHASE 3: LABEL ASSEMBLY ────────────────────────────────────────────────
+subgraph P3["Phase 3 · Hybrid Label Assembly & Dataset Pre-conditioning"]
+    direction LR
+    C1["**3A · Positive Labels** (n = 45)
+    Known VMS Deposit Centroids
+    Confirmed inside master raster extent"]
+    C2["**3B · Hybrid Negative Labels** (n = 250)
+    125 Barren Drill Collars (GeoNB)
+    125 Mahalanobis-Dissimilar Pseudo-absences"]
+    C3["**3C · Balanced Feature Matrix**
+    Raster sampling at all 295 label points
+    >75% null features dropped · Median imputation
+    SMOTE: 45 → 250 positives  →  N = 500"]
+end
+
+%% ── PHASE 4: MODEL TRAINING ────────────────────────────────────────────────
+subgraph P4["Phase 4 · Spatial Block Cross-Validation & Model Training"]
+    direction LR
+    D1["**4A · Spatial Block CV**
+    5-Fold BlockKFold partitioning
+    Geographically disjoint train / test folds
+    SMOTE applied inside training folds only"]
+    D2["**4B · Classifier Optimization**
+    Random Forest (Gini · balanced weights)
+    XGBoost (binary:logistic · scale_pos_weight)
+    Optuna randomized hyperparameter search"]
+    D3["**4C · Out-of-Fold Evaluation**
+    ROC-AUC · Average Precision
+    Balanced Accuracy · Success-Rate AUC
+    RF: ROC-AUC 0.927 ± 0.047 · SR-AUC 0.968"]
+end
+
+%% ── PHASE 5: MAPPING & EXPLAINABILITY ────────────────────────────────────
+subgraph P5["Phase 5 · Camp-Scale Prediction, GIS Mapping & Explainability"]
+    direction LR
+    E1["**5A · Camp-Scale Inference**
+    Model applied to 1,194,109 raster cells
+    Continuous Prospectivity Index (PI 0–1)"]
+    E2["**5B · Target Delineation & GIS**
+    Georeferenced GeoTIFF export (EPSG:2953)
+    High-priority targets: PI > 0.7
+    Cumulative Success-Rate area capture"]
+    E3["**5C · TreeSHAP Explainability**
+    Per-pixel feature attribution (Shapley values)
+    Global importance rankings
+    Partial Dependence Plots (PDP)"]
+end
+
+%% ── PHASE-TO-PHASE MAIN ARROWS ─────────────────────────────────────────────
+A1 -->|"Geophysical grids"| B1
+A2 -->|"Geochemistry tables"| B2
+A3 -->|"Deposit coordinates"| C1
+A3 -->|"Barren drill collars"| C2
+
+B1 -->|"Derivative rasters"| B3
+B2 -->|"CLR-PCA/FA surfaces + IDW"| B3
+
+B3 -->|"Mahalanobis feature space\n(pseudo-absence selection)"| C2
+B3 -->|"Raster feature sampling\nat 295 label points"| C3
+
+C1 -->|"Y = 1 labels"| C3
+C2 -->|"Y = 0 labels"| C3
+
+C3 -->|"Balanced feature matrix\nX (500 × 55) · y (500)"| D1
+
+D1 -->|"Train / validation\nCV fold splits"| D2
+D2 -->|"Out-of-fold predictions"| D3
+
+D2 -->|"Trained RF & XGBoost\nmodel objects"| E1
+D2 -->|"Model trees & leaf weights"| E3
+
+B3 -->|"Full 100 m master grid\n(1,194,109 cells)"| E1
+
+E1 -->|"Prospectivity Index\nraster (PI 0–1)"| E2
+E1 -->|"Prospectivity scores\nfor SHAP attribution"| E3
+
+%% ── STYLE ──────────────────────────────────────────────────────────────────
+classDef blue  fill:#dbeeff,stroke:#1f77b4,color:#0a0a0a
+classDef green fill:#dbf5db,stroke:#2ca02c,color:#0a0a0a
+classDef orange fill:#fff0db,stroke:#ff7f0e,color:#0a0a0a
+classDef purple fill:#f0e8ff,stroke:#9467bd,color:#0a0a0a
+classDef red   fill:#ffe8e8,stroke:#d62728,color:#0a0a0a
+
+class A1,A2,A3 blue
+class B1,B2,B3 green
+class C1,C2,C3 orange
+class D1,D2,D3 purple
+class E1,E2,E3 red
+```
+
+> **Fig. 2** — Schematic flowchart of the machine learning prospectivity mapping pipeline. Colour-coded boxes correspond to the five pipeline phases: blue = data compilation; green = preprocessing and feature synthesis; orange = label assembly and balancing; purple = spatial cross-validation and model training; red = camp-scale prediction and explainability. Arrows are labelled with the data artefact transferred between stages. CLR: centered log-ratio; FA: factor analysis; IDW: inverse distance weighting; MEAS: multi-element anomaly score; PCA: principal component analysis; RF: random forest; SHAP: SHapley Additive exPlanations; SMOTE: synthetic minority over-sampling technique; XGBoost: extreme gradient boosting.
+
+
 
 ### 3.1 Geophysical Datasets and Derivative Computation
 
@@ -154,7 +275,15 @@ where pathfinder concentrations were normalized to zero mean and unit variance a
 
 Features containing more than 75% missing values at label locations were excluded from model training to prevent numerical instability. Of the 17 raw geochemical elements, 4 (Bi, In, Tl, Mn) exceeded this threshold and were dropped; the remaining 13 raw elements (Ag, As, Ba, Cd, Co, Cu, Fe, Mo, Ni, Pb, Sb, Sn, Zn) were retained. Missing values in retained features were imputed using column-wise median values.
 
-To address the severe class imbalance between the 45 VMS deposits and 250 negative points, the Synthetic Minority Over-sampling Technique (SMOTE; Chawla et al., 2002) was applied exclusively to the minority class prior to model training. SMOTE generates artificial positive instances by linearly interpolating in feature space between each minority sample and a randomly selected member of its k-nearest minority neighbors, augmenting the positive class to match the negative class count and yielding a balanced training set of $n = 500$ samples (250 per class).
+To address the severe class imbalance between the 45 known VMS deposits and 250 negative points (an initial ratio of $\approx 1:5.55$), the Synthetic Minority Over-sampling Technique (SMOTE; Chawla et al., 2002) was applied to the minority positive class. Standard machine learning classifiers (such as Random Forest and XGBoost) trained on imbalanced datasets tend to optimize global loss by predicting the majority barren class, systematically suppressing minority-class recall. In addition, holding out an entire geographic block during 5-fold spatial cross-validation leaves only ~30–35 positive instances per training fold, impairing split optimization and gradient stability.
+
+SMOTE resolves this by generating synthetic positive instances through linear interpolation between $k$-nearest minority neighbors in feature space:
+
+$$x_{\text{new}} = x_i + \lambda (x_{\text{neighbor}} - x_i), \quad \lambda \sim U(0, 1)$$
+
+Geologically, feature-space interpolation is well-justified in VMS systems because hydrothermal fluid circulation generates continuous physical and chemical gradients in host rocks and overlying till (e.g., alteration halos, pathfinder element plumes, and geophysical derivative anomalies). Interpolating between known deposit signatures produces synthetic vectors representing plausible intermediate positions within this continuous prospectivity manifold, allowing decision trees to learn generalized multivariate rules rather than memorizing exact spatial coordinates.
+
+Crucially, to prevent spatial data leakage, SMOTE was applied **strictly within training folds** during spatial block cross-validation—never to validation sets. The positive class was augmented to match the negative class count ($n = 250$ per class, yielding a balanced training set of $N = 500$ samples), guaranteeing that model validation metrics reflect true generalization to geographically independent test folds.
 
 ### 3.6 Spatial Block Cross-Validation
 
