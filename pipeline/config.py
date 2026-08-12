@@ -62,6 +62,7 @@ NODATA_VALUE             = -9999
 RASTER_FEATURES = [
     "mag_tmi",          # Total Magnetic Intensity
     # ── Magnetic derivatives (computed by compute_mag_derivatives.py) ──
+    "mag_rmi_bmc_combined1",  # Compiled TMI grid (source for mag_hgm / mag_as derivation)
     "mag_rmi_fvd_bmc",  # First Vertical Derivative
     "mag_rmi_thg_bmc",  # Total Horizontal Gradient
     "mag_rmi_as_bmc",   # Analytic Signal Amplitude

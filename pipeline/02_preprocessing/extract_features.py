@@ -32,7 +32,7 @@ PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
     PROCESSED_DIR, GEOCHEMISTRY_GPKG, VMS_LABELS_GPKG, BARREN_LABELS_GPKG,
-    FEATURE_MATRIX_PQ, CRS_TARGET, NODATA_VALUE
+    FEATURE_MATRIX_PQ, CRS_TARGET, NODATA_VALUE, RASTER_FEATURES
 )
 
 PATHFINDER_ELEMENTS = ["ag_ppm", "as_ppm", "ba_ppm", "bi_ppm", "cd_ppm", "co_ppm", "cu_ppm", "fe_ppm", "in_ppm", "mn_ppm", "mo_ppm", "ni_ppm", "pb_ppm", "sb_ppm", "sn_ppm", "tl_ppm", "zn_ppm"]
@@ -95,16 +95,37 @@ def load_geochem_points() -> gpd.GeoDataFrame:
 
 def sample_rasters_at_points(
     gdf: gpd.GeoDataFrame,
-    raster_dir: Path
+    raster_dir: Path,
+    whitelist: list = None
 ) -> pd.DataFrame:
     """
-    Sample all rasters in raster_dir at point locations.
+    Sample rasters in raster_dir at point locations.
+    Only rasters whose derived column name appears in `whitelist` are sampled.
+    If whitelist is None, all rasters are sampled (legacy behaviour).
     Returns a DataFrame with one column per raster band.
     """
-    raster_paths = sorted(raster_dir.glob("*.tif"))
-    if not raster_paths:
+    all_raster_paths = sorted(raster_dir.glob("*.tif"))
+    if not all_raster_paths:
         log.warning(f"  No reprojected rasters found in {raster_dir}")
         return pd.DataFrame(index=gdf.index)
+
+    # Filter to the explicit whitelist to exclude intermediate/duplicate files
+    if whitelist is not None:
+        whitelist_set = set(whitelist)
+        raster_paths = [
+            p for p in all_raster_paths
+            if p.stem.replace("_epsg2953", "") in whitelist_set
+        ]
+        skipped = len(all_raster_paths) - len(raster_paths)
+        log.info(
+            f"  Raster whitelist active: {len(raster_paths)} selected, "
+            f"{skipped} intermediate/duplicate file(s) excluded."
+        )
+    else:
+        raster_paths = all_raster_paths
+        log.warning(
+            "  No whitelist provided — sampling ALL rasters (may include intermediates)."
+        )
 
     log.info(f"  Sampling {len(raster_paths)} raster(s) at {len(gdf)} points ...")
 
@@ -200,7 +221,9 @@ def main():
 
     # ── Sample geophysical rasters ───────────────────────────────────────────
     log.info("\n[3/4] Sampling geophysical rasters at label locations ...")
-    raster_features_df = sample_rasters_at_points(labels_gdf, REPROJECTED_RASTERS_DIR)
+    raster_features_df = sample_rasters_at_points(
+        labels_gdf, REPROJECTED_RASTERS_DIR, whitelist=RASTER_FEATURES
+    )
 
     # Combine label info with raster features
     combined_df = pd.concat(

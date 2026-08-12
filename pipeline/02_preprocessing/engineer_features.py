@@ -6,11 +6,6 @@ extracted into the feature matrix. These derived features often have stronger
 geological signal than the raw band values for VMS targeting.
 
 Derived features:
-  Magnetics:
-    • TMI Horizontal Gradient Magnitude  = sqrt(dTMI/dx² + dTMI/dy²)
-    • Analytic Signal Amplitude          = sqrt(dTMI/dx² + dTMI/dy² + dTMI/dz²)
-    ↳ Both approximate using TMI and FVD (as a proxy for dTMI/dz)
-
   Radiometrics:
     • K/Th ratio   — high values → potassic alteration halos around VMS
     • U/Th ratio   — useful for separating alteration styles
@@ -19,6 +14,12 @@ Derived features:
   Geochemistry:
     • log-transformed pathfinder elements (lognormal distributions)
     • Multi-element anomaly score: standardised Z sum of Zn, Pb, Cu, As
+
+  Note on magnetic derivatives:
+    Fourier-domain Analytic Signal (mag_rmi_as_bmc) and Total Horizontal Gradient
+    (mag_rmi_thg_bmc) are extracted directly from reprojected rasters by
+    extract_features.py and are NOT recomputed here. Point-wise approximations
+    of these quantities are intentionally excluded.
 
 After running this script, the feature matrix parquet is updated in-place
 with the new derived columns appended.
@@ -47,9 +48,9 @@ log = logging.getLogger(__name__)
 # Minimum valid values (to guard against divide-by-zero / log(0))
 EPSILON = 1e-6
 
-# Expected column names for raw features (must match raster file stems)
-MAG_TMI  = "mag_rmi_bmc_combined1"
-MAG_FVD  = "mag_rmi_fvd_bmc"
+# Expected column names for raw features (must match raster file stems in config.RASTER_FEATURES)
+MAG_TMI  = "mag_rmi_bmc_combined1"  # Compiled TMI grid
+MAG_FVD  = "mag_rmi_fvd_bmc"        # First Vertical Derivative
 RAD_K    = "rad_k_bmc"
 RAD_TH   = "rad_th_bmc"
 RAD_U    = "rad_u_bmc"
@@ -207,22 +208,11 @@ def main():
     initial_cols = set(df.columns)
 
     # ── Magnetics features ───────────────────────────────────────────────────
-    if MAG_TMI in df.columns and MAG_FVD in df.columns:
-        log.info("\n[Magnetics] Computing derived features ...")
-        tmi = df[MAG_TMI].fillna(0).values
-        fvd = df[MAG_FVD].fillna(0).values
-
-        df["mag_hgm"]  = compute_horizontal_gradient(tmi, fvd)
-        df["mag_as"]   = compute_analytic_signal(tmi, fvd)
-        log.info("  ✅ mag_hgm (horizontal gradient magnitude)")
-        log.info("  ✅ mag_as  (analytic signal amplitude)")
-    else:
-        log.warning(
-            f"  Magnetic columns not found ({MAG_TMI}, {MAG_FVD}). "
-            "Skipping magnetic feature derivation – will be populated after raster download."
-        )
-        df["mag_hgm"] = np.nan
-        df["mag_as"]  = np.nan
+    # Fourier-domain AS (mag_rmi_as_bmc) and THG (mag_rmi_thg_bmc) are already
+    # present in the feature matrix from extract_features.py. Point-wise
+    # approximations (mag_as, mag_hgm) are not computed to avoid redundancy.
+    log.info("\n[Magnetics] Skipping point-wise approximations "
+             "— using Fourier-domain rasters (mag_rmi_as_bmc, mag_rmi_thg_bmc).")
 
     # ── Radiometrics features ────────────────────────────────────────────────
     rad_available = all(c in df.columns for c in [RAD_K, RAD_TH, RAD_U])
