@@ -18,19 +18,20 @@
 
 ---
 
-## Column Groups (102 total)
+## Column Groups (102 total — verified)
 
-| Group | Count | Examples |
-|---|---|---|
+| Group | Count | Contents |
+|---|---:|---|
 | **Identity / Spatial** | 3 | `point_id`, `source`, `geometry_wkt` |
-| **Raw geochemistry** (ppm) | 17 | `ag_ppm`, `cu_ppm`, `zn_ppm`, `pb_ppm`, `as_ppm`, … |
-| **Log-transformed geochem** | 17 | `log_ag_ppm`, `log_cu_ppm`, `log_zn_ppm`, … |
-| **IDW-interpolated (raw)** | 21 | `geochem_cu_ppm_idw`, `geochem_pca_pc1_idw`, `geochem_fa_factor1_idw`, … |
-| **IDW-interpolated (log)** | 17 | `log_geochem_cu_ppm_idw`, `log_geochem_zn_ppm_idw`, … |
+| **Raw geochemistry** (ppm) | 17 | `ag_ppm` … `zn_ppm` (all 17 elements) |
+| **Log-transformed geochem** | 17 | `log_ag_ppm` … `log_zn_ppm` |
+| **IDW-interpolated (raw)** | 25 | 17 element surfaces + 4 PCA PCs + 4 FA factors |
+| **IDW-interpolated (log)** | 17 | `log_geochem_ag_ppm_idw` … `log_geochem_zn_ppm_idw` |
 | **Radiometric ratios** | 3 | `rad_k_th`, `rad_u_th`, `rad_th_k` |
-| **Geophysics BMC features** | 18 | `mag_rmi_as_bmc`, `rad_k_bmc`, `gra_ggr_fvd_bmc`, … |
+| **Geophysics BMC features** | 18 | 6 gravity + 5 magnetics + 7 radiometric BMC derivatives |
 | **Composite score** | 1 | `geochem_meas` (range: −1.11 → +0.62) |
 | **Target** | 1 | `label` (0 = background, 1 = VMS deposit) |
+| **Total** | **102** | ✅ All columns accounted for |
 
 ---
 
@@ -38,59 +39,101 @@
 
 **17 elements**: Ag, As, Ba, Bi, Cd, Co, Cu, Fe, In, Mn, Mo, Ni, Pb, Sb, Sn, Tl, Zn
 
+Each element is represented in up to three forms:
+1. Raw sparse `*_ppm` (variable missingness)
+2. Log₁₀-transformed raw `log_*_ppm`
+3. Spatially complete IDW-interpolated surface `geochem_*_ppm_idw` (0% null)
+
 ---
 
 ## Missing Data (raw ppm columns)
 
-| Column | Non-null | Null % |
-|---|---|---|
-| `ag_ppm`, `ba_ppm`, `co_ppm`, `cu_ppm`, `mo_ppm`, `ni_ppm`, `pb_ppm`, `zn_ppm` | 223 / 295 | 24.4 % |
-| `as_ppm`, `sb_ppm`, `fe_ppm` | 199 / 295 | 32.5 % |
-| `sn_ppm` | 159 / 295 | 46.1 % |
-| `cd_ppm` | 158 / 295 | 46.4 % |
-| `mn_ppm` | 123 / 295 | 58.3 % |
-| `bi_ppm`, `in_ppm`, `tl_ppm` | 117–118 / 295 | 60–60.3 % |
+| Element group | Non-null | Null % | Status in training |
+|---|---|---|---|
+| Ag, Ba, Co, Cu, Mo, Ni, Pb, Zn | 223 / 295 | 24.4 % | Retained + imputed |
+| As, Sb, Fe | 199 / 295 | 32.5 % | Retained + imputed |
+| Sn | 159 / 295 | 46.1 % | Retained + imputed |
+| Cd | 158 / 295 | 46.4 % | Retained + imputed |
+| Mn | 123 / 295 | 58.3 % | Retained + imputed |
+| Bi, In, Tl | 117–118 / 295 | 60–60.3 % | Retained + imputed |
 
 > [!NOTE]
-> IDW-interpolated columns (`*_idw`) are complete for all 295 rows — they fill the spatial gaps left by the sparse direct measurements.
+> The pipeline drop threshold is **75% null**. No raw element reached this threshold, so all 17 were retained. Missing values were imputed with column-wise median. IDW-interpolated counterparts are available for all 295 rows with 0% null, providing complete spatial coverage for every element regardless of sparse-data rates.
 
 ---
 
-## Key Geophysical / Radiometric Features
+## Geophysics BMC Features (18 columns)
 
-| Column | Description | Mean | Std |
-|---|---|---|---|
-| `rad_k_th` | K/Th ratio | 5.04 × 10⁶ | 2.13 × 10⁷ |
-| `rad_u_th` | U/Th ratio | 2.46 × 10⁷ | 5.01 × 10⁷ |
-| `rad_th_k` | Th/K ratio | 5.71 × 10⁶ | 2.99 × 10⁷ |
-| `geochem_meas` | Composite geochemical score | 0.00 | 0.55 |
+| Sub-group | Columns |
+|---|---|
+| **Magnetics** (5) | `mag_rmi_bmc_combined1`, `mag_rmi_fvd_bmc`, `mag_rmi_thg_bmc`, `mag_rmi_as_bmc`, `mag_rmi_tdr_bmc` |
+| **Gravity** (6) | `gra_ggr_hgm_bmc`, `gra_ggr_tdr_bmc`, `gra_ggr_fvd_bmc`, `gra_ggr_as_bmc`, `gra_ggr_uc500_bmc`, `gra_ggr_res_bmc` |
+| **Radiometric BMC** (7) | `rad_k_bmc`, `rad_th_bmc`, `rad_u_bmc`, `rad_k_th_bmc`, `rad_u_th_bmc`, `rad_th_k_bmc`, `rad_u_k_bmc` |
 
 ---
 
-## Notable Statistics (selected raw ppm)
+## IDW Dimensionality-Reduced Features
 
-| Element | Mean | Std | Min | Median | Max |
+Embedded within the 25 raw IDW columns:
+- **PCA**: `geochem_pca_pc1_idw` … `geochem_pca_pc4_idw`
+- **FA**: `geochem_fa_factor1_idw` … `geochem_fa_factor4_idw`
+
+Derived via CLR → StandardScaler → PCA / FactorAnalysis on the 17-element IDW raster stack (see `pipeline/02_preprocessing/pca_fa_geochem.py`).
+
+---
+
+## Notable Element Statistics (selected raw ppm)
+
+| Element | n | Mean | Std | Median | Max |
 |---|---|---|---|---|---|
-| Ag | — | — | 0.1 | — | — (log mean −3.64) |
-| As | 22.8 | 34.4 | 2.0 | 13.0 | 200 |
-| Cu | 31.9 | 32.1 | 6.0 | 27.2 | 130 |
-| Pb | 78.8 | 289.5 | 0.0 | 29.0 | 3400 |
-| Zn | 121.4 | 86.6 | 0.0 | 101.0 | 950 |
-| Sb | 2.81 | 6.27 | 0.2 | 1.1 | 49.0 |
-| Sn | 14.9 | 31.9 | 0.0 | 1.3 | 100 |
+| As | 199 | 22.8 | 34.4 | 13.0 | 200 |
+| Cu | 223 | 31.9 | 32.1 | 27.2 | 130 |
+| Zn | 223 | 121.4 | 86.6 | 101.0 | 950 |
+| Pb | 223 | 78.8 | 289.5 | 29.0 | **3,400** |
+| Sb | 199 | 2.81 | 6.27 | 1.1 | 49.0 |
+| Sn | 159 | 14.9 | 31.9 | 1.3 | 100 |
+
+> [!TIP]
+> Pb has a maximum of 3,400 ppm vs. a median of 29 ppm — strongly right-skewed. Log-transformation is essential before modelling.
 
 ---
 
-## Derived / Dimensionality-Reduced Features
+## Top-10 Predictive Features
 
-The IDW group also includes **PCA** and **Factor Analysis** components:
-- `geochem_pca_pc1_idw` … `geochem_pca_pc4_idw` (4 PCs)
-- `geochem_fa_factor1_idw` … `geochem_fa_factor4_idw` (4 FA factors)
+### Random Forest
 
-These capture multi-element covariance structure interpolated across the study area.
+| Rank | Feature | Importance |
+|---|---|---|
+| 1 | `rad_th_k_bmc` | 0.0879 |
+| 2 | `rad_th_bmc` | 0.0728 |
+| 3 | `geochem_mo_ppm_idw` | 0.0475 |
+| 4 | `geochem_zn_ppm_idw` | 0.0383 |
+| 5 | `rad_k_bmc` | 0.0379 |
+| 6 | `gra_ggr_hgm_bmc` | 0.0297 |
+| 7 | `geochem_bi_ppm_idw` | 0.0295 |
+| 8 | `geochem_pb_ppm_idw` | 0.0293 |
+| 9 | `rad_u_th_bmc` | 0.0223 |
+| 10 | `geochem_mn_ppm_idw` | 0.0219 |
+
+### XGBoost
+
+| Rank | Feature | Importance |
+|---|---|---|
+| 1 | `rad_th_k_bmc` | 0.1125 |
+| 2 | `rad_th_bmc` | 0.0759 |
+| 3 | `geochem_fa_factor2_idw` | 0.0417 |
+| 4 | `geochem_mo_ppm_idw` | 0.0406 |
+| 5 | `geochem_pca_pc4_idw` | 0.0328 |
+| 6 | `zn_ppm` | 0.0291 |
+| 7 | `mo_ppm` | 0.0288 |
+| 8 | `geochem_pca_pc3_idw` | 0.0282 |
+| 9 | `geochem_zn_ppm_idw` | 0.0278 |
+| 10 | `tl_ppm` | 0.0242 |
+
+**Both models agree**: `rad_th_k_bmc` and `rad_th_bmc` are the dominant predictors. `geochem_mo_ppm_idw` and `geochem_zn_ppm_idw` are consistently important across both. XGBoost draws more on PCA/FA components; RF relies more on individual IDW element surfaces and additional radiometric BMC features.
 
 ---
 
 ## Summary
 
-The matrix combines **direct borehole / soil geochemistry** (raw + log-transformed, with significant missingness) with **spatially complete IDW-interpolated surfaces** and **airborne geophysical signatures** (magnetics, gravity, radiometrics). The binary `label` marks **45 confirmed VMS deposit locations** against **250 background points** — a moderately imbalanced classification problem well-suited for tree-based or probability-calibrated models.
+The matrix combines **direct borehole/soil geochemistry** (raw + log-transformed; 24–60% missingness in sparse columns) with **spatially complete IDW-interpolated surfaces** (0% null; including PCA and FA components) and **airborne geophysical signatures** (magnetics, gravity, radiometrics). The binary `label` marks **45 confirmed VMS deposit locations** against **250 background points** — a moderately imbalanced classification problem (~5.6 : 1) addressed via SMOTE within training folds.
