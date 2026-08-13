@@ -1,0 +1,33 @@
+================================================================================
+MEAN SHAP ANALYSIS — RANDOMFOREST (PROBABILITY SPACE)
+================================================================================
+
+Base Probability (Expected Value):  0.508604
+Total Features:                      60
+
+TOP 10 FEATURES BY MEAN |SHAP|:
+--------------------------------------------------------------------------------
+  17. rad_th_k_bmc                              Mean SHAP:   0.050063
+  13. rad_th_bmc                                Mean SHAP:   0.039734
+  29. geochem_mo_ppm_idw                        Mean SHAP:   0.033967
+  12. rad_k_bmc                                 Mean SHAP:   0.018427
+  35. geochem_zn_ppm_idw                        Mean SHAP:   0.018405
+  22. geochem_bi_ppm_idw                        Mean SHAP:   0.014653
+  31. geochem_pb_ppm_idw                        Mean SHAP:   0.013801
+  60. zn_ppm                                    Mean SHAP:   0.013245
+   6. gra_ggr_hgm_bmc                           Mean SHAP:   0.012810
+  54. mo_ppm                                    Mean SHAP:   0.012620
+
+INTERPRETATION:
+--------------------------------------------------------------------------------
+• Mean |SHAP| quantifies each feature's average contribution to VMS probability
+• Values are directly computed in probability space (0-1 range)
+• All contributions are naturally bounded within [0, 1]
+• Interpretation: 'Feature X changes deposit probability by ±Y on average'
+
+TECHNICAL DETAILS:
+--------------------------------------------------------------------------------
+• TreeExplainer with model_output='probability' directly provides probability-space SHAP
+• Interventional feature perturbation ensures robust explanations
+• Background dataset enables proper baseline probability calculation
+• SHAP values are additive and sum to the difference between prediction and base
