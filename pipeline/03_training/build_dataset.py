@@ -6,7 +6,7 @@ Assembles the final training dataset from the engineered feature matrix.
 Steps:
   1. Load feature matrix (parquet)
   2. Select only labelled rows (label = 0 or 1; drop NaN labels)
-  3. Drop features with >50% null values
+  3. Drop features with >75% null values
   4. Impute remaining nulls (median imputation per feature)
   5. Apply SMOTE oversampling to address class imbalance (1:5 ratio)
   6. Create spatial block indices for spatial cross-validation
