@@ -98,42 +98,52 @@ Derived via CLR → StandardScaler → PCA / FactorAnalysis on the 17-element ID
 
 ---
 
-## Top-10 Predictive Features
+## Top-10 Predictive Features (SHAP mean |SHAP|)
 
-### Random Forest
+> [!NOTE]
+> Values are **mean |SHAP|** computed from `outputs/shap/shap_values_*.csv` (500 SMOTE-balanced samples). These are the authoritative importance scores reported in manuscript §4.4. The model CSV files (`models/*_feature_importances.csv`) contain Gini/gain-based importances and should **not** be used for ranking.
 
-| Rank | Feature | Importance |
+### Random Forest (SHAP)
+
+| Rank | Feature | Mean \|SHAP\| | Domain |
+|---|---|---|---|
+| 1 | `rad_th_k_bmc` | 0.0531 | Radiometrics — Th/K alteration halo |
+| 2 | `rad_th_bmc` | 0.0435 | Radiometrics — raw Th |
+| 3 | `geochem_mo_ppm_idw` | 0.0340 | Geochemistry — Mo IDW |
+| 4 | `rad_k_bmc` | 0.0232 | Radiometrics — raw K |
+| 5 | `geochem_zn_ppm_idw` | 0.0208 | Geochemistry — Zn IDW |
+| 6 | `geochem_bi_ppm_idw` | 0.0170 | Geochemistry — Bi IDW |
+| 7 | `gra_ggr_hgm_bmc` | 0.0166 | Gravity — horizontal gradient |
+| 8 | `geochem_pb_ppm_idw` | 0.0161 | Geochemistry — Pb IDW |
+| 9 | `mo_ppm` | 0.0128 | Geochemistry — Mo raw |
+| 10 | `geochem_fa_factor2_idw` | 0.0126 | Geochemistry — CLR-FA Factor 2 |
+
+### XGBoost (SHAP)
+
+| Rank | Feature | Mean \|SHAP\| | Domain |
+|---|---|---|---|
+| 1 | `rad_th_k_bmc` | 1.1991 | Radiometrics — Th/K alteration halo |
+| 2 | `geochem_mo_ppm_idw` | 0.5331 | Geochemistry — Mo IDW |
+| 3 | `zn_ppm` | 0.4783 | Geochemistry — Zn raw |
+| 4 | `geochem_sn_ppm_idw` | 0.4046 | Geochemistry — Sn IDW |
+| 5 | `gra_ggr_uc500_bmc` | 0.3952 | Gravity — upward-continued Bouguer |
+| 6 | `rad_u_th_bmc` | 0.3735 | Radiometrics — U/Th ratio |
+| 7 | `mo_ppm` | 0.3656 | Geochemistry — Mo raw |
+| 8 | `ni_ppm` | 0.3580 | Geochemistry — Ni raw |
+| 9 | `mag_rmi_as_bmc` | 0.3483 | Magnetics — analytic signal |
+| 10 | `mag_rmi_fvd_bmc` | 0.3261 | Magnetics — first vertical derivative |
+
+### Cross-model Predictor Domains
+
+| Domain | RF top features | XGBoost top features |
 |---|---|---|
-| 1 | `rad_th_k_bmc` | 0.0879 |
-| 2 | `rad_th_bmc` | 0.0728 |
-| 3 | `geochem_mo_ppm_idw` | 0.0475 |
-| 4 | `geochem_zn_ppm_idw` | 0.0383 |
-| 5 | `rad_k_bmc` | 0.0379 |
-| 6 | `gra_ggr_hgm_bmc` | 0.0297 |
-| 7 | `geochem_bi_ppm_idw` | 0.0295 |
-| 8 | `geochem_pb_ppm_idw` | 0.0293 |
-| 9 | `rad_u_th_bmc` | 0.0223 |
-| 10 | `geochem_mn_ppm_idw` | 0.0219 |
-
-### XGBoost
-
-| Rank | Feature | Importance |
-|---|---|---|
-| 1 | `rad_th_k_bmc` | 0.1125 |
-| 2 | `rad_th_bmc` | 0.0759 |
-| 3 | `geochem_fa_factor2_idw` | 0.0417 |
-| 4 | `geochem_mo_ppm_idw` | 0.0406 |
-| 5 | `geochem_pca_pc4_idw` | 0.0328 |
-| 6 | `zn_ppm` | 0.0291 |
-| 7 | `mo_ppm` | 0.0288 |
-| 8 | `geochem_pca_pc3_idw` | 0.0282 |
-| 9 | `geochem_zn_ppm_idw` | 0.0278 |
-| 10 | `tl_ppm` | 0.0242 |
-
-**Both models agree**: `rad_th_k_bmc` and `rad_th_bmc` are the dominant predictors. `geochem_mo_ppm_idw` and `geochem_zn_ppm_idw` are consistently important across both. XGBoost draws more on PCA/FA components; RF relies more on individual IDW element surfaces and additional radiometric BMC features.
+| **Radiometric alteration halos** | rad_th_k, rad_th, rad_k | rad_th_k, rad_u_th |
+| **Geochemical pathfinders** | Mo, Zn, Bi, Pb, FA2 | Mo, Zn, Sn, Ni |
+| **Potential-field structural** | gra_ggr_hgm | gra_ggr_uc500, mag_rmi_as, mag_rmi_fvd |
 
 ---
 
 ## Summary
 
 The matrix combines **direct borehole/soil geochemistry** (raw + log-transformed; 24–60% missingness in sparse columns) with **spatially complete IDW-interpolated surfaces** (0% null; including PCA and FA components) and **airborne geophysical signatures** (magnetics, gravity, radiometrics). The binary `label` marks **45 confirmed VMS deposit locations** against **250 background points** — a moderately imbalanced classification problem (~5.6 : 1) addressed via SMOTE within training folds.
+
