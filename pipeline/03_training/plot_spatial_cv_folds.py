@@ -282,6 +282,59 @@ def print_fold_summary(fold_ids: np.ndarray, labels: np.ndarray):
     
     log.info("\n" + "="*70 + "\n")
 
+def export_fold_polygons(coords: np.ndarray, fold_ids: np.ndarray):
+    """
+    Export fold polygons representing the actual spatial
+    cross-validation regions used during model training.
+    """
+    from shapely.geometry import Polygon
+
+    xmin = coords[:, 0].min()
+    xmax = coords[:, 0].max()
+
+    ymin = coords[:, 1].min()
+    ymax = coords[:, 1].max()
+
+    quantiles = np.quantile(
+        coords[:, 0],
+        [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    )
+
+    polygons = []
+
+    for i in range(len(quantiles) - 1):
+        left = quantiles[i]
+        right = quantiles[i + 1]
+
+        poly = Polygon([
+            (left, ymin),
+            (right, ymin),
+            (right, ymax),
+            (left, ymax),
+            (left, ymin)
+        ])
+
+        polygons.append({
+            "fold_id": i + 1,
+            "geometry": poly
+        })
+
+    gdf_poly = gpd.GeoDataFrame(
+        polygons,
+        crs="EPSG:2953"
+    )
+
+    output_path = OUTPUTS_DIR / "spatial_cv_fold_polygons.gpkg"
+
+    gdf_poly.to_file(
+        output_path,
+        driver="GPKG",
+        index=False
+    )
+
+    log.info(
+        f"✅ Spatial fold polygons exported: {output_path}"
+    )
 
 def export_spatial_folds_gpkg(df: pd.DataFrame, fold_ids: np.ndarray):
     """Export spatial folds to GeoPackage format for QGIS."""
@@ -346,7 +399,9 @@ def main():
     # Export to GeoPackage
     log.info("\nExporting spatial folds to GeoPackage...")
     export_spatial_folds_gpkg(df, fold_ids)
-    
+
+    # Export fold polygons
+    export_fold_polygons(coords, fold_ids)
     log.info("✅ Spatial CV fold visualization complete!")
 
 
