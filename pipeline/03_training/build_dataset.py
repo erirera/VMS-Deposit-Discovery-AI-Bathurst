@@ -13,8 +13,9 @@ Steps:
   7. Save final training arrays as numpy .npz
 
 Spatial Cross-Validation:
-  Uses a custom BlockKFold approach: the BMC extent is divided into
-  N×N spatial blocks. Each fold uses one block-column as the test set,
+  The BMC extent is divided into partitioned into five geographically 
+  distinct spatial folds using quantiles of sample easting coordinates. 
+  Each fold uses one block-column as the test set,
   ensuring training and test points are spatially separated. This
   prevents data leakage through spatial autocorrelation.
 
@@ -111,7 +112,7 @@ def apply_smote(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def assign_spatial_blocks(df: pd.DataFrame, n_blocks: int = 5) -> np.ndarray:
     """
     Assign each point to a spatial block for cross-validation.
-    Divides the bounding box into The study area was partitioned into five geographically 
+    The study area was partitioned into five geographically 
     distinct spatial folds using quantiles of sample easting coordinates, 
     ensuring approximate balance in the number of samples assigned to each fold and assigns a block ID
     to each point based on its geometry_wkt coordinates.
