@@ -284,38 +284,67 @@ def print_fold_summary(fold_ids: np.ndarray, labels: np.ndarray):
 
 def export_fold_polygons(coords: np.ndarray, fold_ids: np.ndarray):
     """
-    Export fold polygons representing the actual spatial
-    cross-validation regions used during model training.
+    Export spatial cross-validation fold polygons as a GeoPackage.
+    Fold boundaries are derived directly from the sample locations
+    assigned to each fold, ensuring exact consistency with the
+    cross-validation procedure used during model training.
+
+    Parameters
+    ----------
+    coords : np.ndarray
+        Array of point coordinates with shape (n_samples, 2)
+        where column 0 = easting and column 1 = northing.
+
+    fold_ids : np.ndarray
+        Spatial fold assignments for each sample.
     """
+
     from shapely.geometry import Polygon
 
-    xmin = coords[:, 0].min()
-    xmax = coords[:, 0].max()
+    # Separate coordinates for clarity
+    x = coords[:, 0]
+    y = coords[:, 1]
 
-    ymin = coords[:, 1].min()
-    ymax = coords[:, 1].max()
-
-    quantiles = np.quantile(
-        coords[:, 0],
-        [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    )
+    # Full north-south extent of study area
+    ymin = y.min()
+    ymax = y.max()
 
     polygons = []
 
-    for i in range(len(quantiles) - 1):
-        left = quantiles[i]
-        right = quantiles[i + 1]
+    unique_folds = np.unique(fold_ids)
+
+    log.info("\nSpatial Fold Extents")
+    log.info("-" * 60)
+
+    for fold in unique_folds:
+        fold_mask = fold_ids == fold
+
+        # Actual fold boundaries from assigned samples
+        xmin = x[fold_mask].min()
+        xmax = x[fold_mask].max()
+        
+        width_m = xmax - xmin
+
+        log.info(
+            f"Fold {int(fold)+1}: "
+            f"Xmin={xmin:.2f}, "
+            f"Xmax={xmax:.2f}, "
+            f"Width={width_m:.2f} m"
+        )
 
         poly = Polygon([
-            (left, ymin),
-            (right, ymin),
-            (right, ymax),
-            (left, ymax),
-            (left, ymin)
+            (xmin, ymin),
+            (xmax, ymin),
+            (xmax, ymax),
+            (xmin, ymax),
+            (xmin, ymin)
         ])
 
         polygons.append({
-            "fold_id": i + 1,
+            "fold_id": int(fold) + 1, # Display folds as 1–5
+            "xmin": xmin,
+            "xmax": xmax,
+            "width_m": width_m,
             "geometry": poly
         })
 
@@ -333,8 +362,10 @@ def export_fold_polygons(coords: np.ndarray, fold_ids: np.ndarray):
     )
 
     log.info(
-        f"✅ Spatial fold polygons exported: {output_path}"
+        f"\n✅ Spatial fold polygons exported: {output_path}"
     )
+
+    return gdf_poly
 
 def export_spatial_folds_gpkg(df: pd.DataFrame, fold_ids: np.ndarray):
     """Export spatial folds to GeoPackage format for QGIS."""
@@ -401,8 +432,8 @@ def main():
     export_spatial_folds_gpkg(df, fold_ids)
 
     # Export fold polygons
+    log.info("\nExporting fold polygons...")
     export_fold_polygons(coords, fold_ids)
-    log.info("✅ Spatial CV fold visualization complete!")
 
 
 if __name__ == "__main__":
