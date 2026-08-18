@@ -23,6 +23,7 @@ from rasterio.transform import from_bounds
 from rasterio.crs import CRS
 import geopandas as gpd
 from shapely.geometry import box
+from scipy.ndimage import gaussian_filter
 
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
@@ -142,6 +143,19 @@ def apply_feature_engineering(df):
     return df
 
 
+def smooth_probability_grid(prob_grid, sigma=(1.0, 1.0)):
+    """Apply a lightweight Gaussian smoothing to reduce striping artifacts."""
+    valid = np.isfinite(prob_grid)
+    if not valid.any():
+        return prob_grid.astype(np.float32)
+
+    filled = np.where(valid, prob_grid, 0.0).astype(np.float32)
+    filtered = gaussian_filter(filled, sigma=sigma, mode="nearest")
+    filtered = np.where(valid, filtered, np.nan)
+    filtered = np.clip(filtered, 0.0, 1.0).astype(np.float32)
+    return filtered
+
+
 def predict_and_write(model, grid_df, feature_names, imputer,
                       model_name, out_path, shape, transform):
     """Run prediction and write GeoTIFF."""
@@ -171,6 +185,8 @@ def predict_and_write(model, grid_df, feature_names, imputer,
         probs[i:i+BATCH] = model.predict_proba(X_grid[i:i+BATCH])[:, 1]
 
     prob_grid = probs.reshape(shape).astype(np.float32)
+    prob_grid = smooth_probability_grid(prob_grid, sigma=(1.0, 1.0))
+    log.info(f"  Applied Gaussian smoothing: sigma=(1.0, 1.0)")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with rasterio.open(

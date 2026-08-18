@@ -27,7 +27,7 @@ PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
     OUTPUTS_DIR, RF_PROSPECTIVITY_TIFF,
-    VMS_LABELS_GPKG, CRS_TARGET
+    VMS_LABELS_GPKG, CRS_TARGET, RAW_DIR
 )
 
 logging.basicConfig(
@@ -70,11 +70,38 @@ def load_vms_deposits():
     return gdf.to_crs(CRS_TARGET) if gdf.crs.to_string() != CRS_TARGET else gdf
 
 
-def export_png(data, transform, bounds, deposits):
+def load_magnetic_background():
+    """Load the magnetic TMI raster to use as a background basemap."""
+    mag_path = RAW_DIR / "rasters" / "mag_rmi_bmc_combined1.tif"
+    if not mag_path.exists():
+        log.warning(f"Magnetic background not found: {mag_path}")
+        return None, None, None
+
+    with rasterio.open(mag_path) as src:
+        data = src.read(1, masked=True)
+        transform = src.transform
+        bounds = src.bounds
+        crs = src.crs
+
+    log.info(f"  Loaded magnetic background: {mag_path.name}  CRS={crs}")
+    return data, transform, bounds
+
+
+def export_png(data, transform, bounds, deposits, background=None, background_transform=None, title_suffix=""):
     """Publication-ready PNG figure."""
     fig, ax = plt.subplots(figsize=(14, 10))
     fig.patch.set_facecolor("#0f172a")
     ax.set_facecolor("#0d1117")
+
+    if background is not None and background_transform is not None:
+        show(
+            background,
+            transform=background_transform,
+            cmap="gray_r",
+            ax=ax,
+            alpha=0.7,
+            zorder=1
+        )
 
     # Raster
     img = ax.imshow(
@@ -83,7 +110,8 @@ def export_png(data, transform, bounds, deposits):
         origin="upper",
         cmap=PROSPECT_CMAP,
         vmin=0, vmax=1,
-        alpha=0.85
+        alpha=0.85,
+        zorder=2
     )
 
     # Colorbar
@@ -101,9 +129,15 @@ def export_png(data, transform, bounds, deposits):
         )
 
     # Labels & formatting
-    ax.set_title(
+    title = (
         "AI Prospectivity Map — Bathurst Mining Camp, New Brunswick\n"
-        "Random Forest / XGBoost Ensemble · NRCan Geophysics + NB Till Geochemistry",
+        "Random Forest / XGBoost Ensemble · NRCan Geophysics + NB Till Geochemistry"
+    )
+    if title_suffix:
+        title = f"{title}\n{title_suffix}"
+
+    ax.set_title(
+        title,
         color="#f8fafc", fontsize=13, fontweight="bold", pad=15
     )
     ax.set_xlabel("Easting (m) — EPSG:2953", color="#94a3b8")
@@ -134,11 +168,15 @@ def export_png(data, transform, bounds, deposits):
 
     fig.tight_layout()
     out_png = OUTPUTS_DIR / "rf_prospectivity_map.png"
+    if background is not None:
+        out_png = OUTPUTS_DIR / "rf_prospectivity_map_magnetic_overlay.png"
     fig.savefig(out_png, dpi=200, bbox_inches="tight", facecolor="#0f172a")
     log.info(f"  ✅ PNG saved → {out_png}")
 
     # High-res PDF for manuscript
     out_pdf = OUTPUTS_DIR / "rf_prospectivity_map_hires.pdf"
+    if background is not None:
+        out_pdf = OUTPUTS_DIR / "rf_prospectivity_map_magnetic_overlay_hires.pdf"
     fig.savefig(out_pdf, dpi=300, bbox_inches="tight", facecolor="#0f172a")
     log.info(f"  ✅ PDF saved → {out_pdf}")
     plt.close(fig)
@@ -150,9 +188,22 @@ def main():
 
     data, transform, bounds = load_prospectivity_raster()
     deposits = load_vms_deposits()
+    background, background_transform, _ = load_magnetic_background()
 
-    log.info("\n[Exporting publication-ready map ...]")
+    log.info("\n[Exporting publication-ready prospectivity map ...]")
     export_png(data, transform, bounds, deposits)
+
+    if background is not None:
+        log.info("\n[Exporting magnetic-overlay prospectivity map ...]")
+        export_png(
+            data,
+            transform,
+            bounds,
+            deposits,
+            background=background,
+            background_transform=background_transform,
+            title_suffix="Background: Total Magnetic Intensity (mag_rmi_bmc_combined1)"
+        )
 
     # Print summary statistics
     valid = data.compressed()
