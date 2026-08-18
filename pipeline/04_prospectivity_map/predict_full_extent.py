@@ -151,6 +151,15 @@ def predict_and_write(model, grid_df, feature_names, imputer,
         if col not in grid_df.columns:
             grid_df[col] = np.nan
 
+    missing = [
+        col for col in feature_names
+        if col not in grid_df.columns
+    ]
+    print(f"Missing features: {len(missing)}")
+
+    for m in missing:
+        print(m)
+
     X_grid = imputer.transform(grid_df[feature_names].values.astype(np.float32))
 
     BATCH = 50_000
