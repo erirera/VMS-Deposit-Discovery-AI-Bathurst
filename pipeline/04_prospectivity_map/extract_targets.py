@@ -83,7 +83,8 @@ def main():
         gdf["mean_pi"] = mean_pi
         gdf["max_pi"] = max_pi
 
-        # Rank targets by maximum prospectivity
+        # Rank targets by maximum prospectivity while also creating a
+        # complementary mean-prospectivity ranking for prioritisation.
         gdf = (
             gdf.sort_values(
                 "max_pi",
@@ -92,16 +93,33 @@ def main():
             .reset_index(drop=True)
         )
 
-        gdf["rank"] = np.arange(
+        gdf["rank_by_max_pi"] = np.arange(
             1,
             len(gdf) + 1
         )
 
-        # Target IDs
+        # Target IDs (kept consistent with the max-prospectivity ordering)
         gdf["target_id"] = [
             f"TGT_{i:03d}"
             for i in range(1, len(gdf) + 1)
         ]
+
+        mean_rank_lookup = {
+            row["target_id"]: idx + 1
+            for idx, row in (
+                gdf.sort_values(
+                    "mean_pi",
+                    ascending=False
+                )
+                .reset_index(drop=True)
+                .iterrows()
+            )
+        }
+
+        gdf["rank_by_mean_pi"] = gdf["target_id"].map(mean_rank_lookup)
+
+        # Backward-compatible alias: legacy code expected a single rank column.
+        gdf["rank"] = gdf["rank_by_max_pi"]
 
         # Export GeoPackage
         gdf.to_file(
