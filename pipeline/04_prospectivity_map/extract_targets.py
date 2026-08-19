@@ -5,6 +5,7 @@ Converts high-prospectivity raster cells into ranked target polygons.
 """
 
 import sys
+import argparse
 from pathlib import Path
 
 # Add pipeline directory to path so we can import config
@@ -25,17 +26,41 @@ from config import (
 
 PI_THRESHOLD = 0.70
 
-OUT_GPKG = OUTPUTS_DIR / "rf_targets.gpkg"
+DEFAULT_OUT_GPKG = OUTPUTS_DIR / "rf_targets.gpkg"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Extract ranked target polygons from a prospectivity GeoTIFF."
+    )
+    parser.add_argument(
+        "--input", "-i", type=Path, default=RF_PROSPECTIVITY_TIFF,
+        help=f"Prospectivity GeoTIFF (default: {RF_PROSPECTIVITY_TIFF.name})"
+    )
+    parser.add_argument(
+        "--output", "-o", type=Path, default=DEFAULT_OUT_GPKG,
+        help=f"Output GeoPackage (default: {DEFAULT_OUT_GPKG.name})"
+    )
+    parser.add_argument(
+        "--threshold", type=float, default=PI_THRESHOLD,
+        help=f"Minimum prospectivity probability (default: {PI_THRESHOLD})"
+    )
+    return parser.parse_args()
 
 
 def main():
+    args = parse_args()
+    if not args.input.exists():
+        raise FileNotFoundError(f"Prospectivity raster not found: {args.input}")
+    if not 0 <= args.threshold <= 1:
+        raise ValueError("--threshold must be between 0 and 1")
 
-    with rasterio.open(RF_PROSPECTIVITY_TIFF) as src:
+    with rasterio.open(args.input) as src:
 
         prob = src.read(1)
 
         # Extract high-prospectivity cells
-        target_mask = prob > PI_THRESHOLD
+        target_mask = prob > args.threshold
 
         geoms = []
 
@@ -122,13 +147,14 @@ def main():
         gdf["rank"] = gdf["rank_by_max_pi"]
 
         # Export GeoPackage
+        args.output.parent.mkdir(parents=True, exist_ok=True)
         gdf.to_file(
-            OUT_GPKG,
+            args.output,
             driver="GPKG"
         )
 
     print(
-        f"Saved: {OUT_GPKG}"
+        f"Saved: {args.output}"
     )
 
 
