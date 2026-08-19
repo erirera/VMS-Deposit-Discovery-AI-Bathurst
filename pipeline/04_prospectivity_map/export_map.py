@@ -27,7 +27,7 @@ PIPELINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 from config import (
     OUTPUTS_DIR, RF_PROSPECTIVITY_TIFF,
-    VMS_LABELS_GPKG, CRS_TARGET, RAW_DIR
+    VMS_LABELS_GPKG, CRS_TARGET, MASTER_RASTER_PATH
 )
 
 logging.basicConfig(
@@ -71,8 +71,8 @@ def load_vms_deposits():
 
 
 def load_magnetic_background():
-    """Load the magnetic TMI raster to use as a background basemap."""
-    mag_path = RAW_DIR / "rasters" / "mag_rmi_bmc_combined1.tif"
+    """Load the aligned master magnetic raster as a background basemap."""
+    mag_path = MASTER_RASTER_PATH
     if not mag_path.exists():
         log.warning(f"Magnetic background not found: {mag_path}")
         return None, None, None

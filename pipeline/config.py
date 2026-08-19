@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR        = REPO_ROOT / "data"
 RAW_DIR         = DATA_DIR / "raw"
 PROCESSED_DIR       = DATA_DIR / "processed"
+MASTER_RASTER_PATH  = PROCESSED_DIR / "rasters_reprojected" / "mag_rmi_bmc_combined1_epsg2953.tif"
 RASTERS_DIR         = RAW_DIR / "rasters"              # Geophysical grids
 LABELS_DIR          = RAW_DIR / "labels"               # Deposit & barren locations
 MAG_DERIVATIVES_DIR = PROCESSED_DIR / "mag_derivatives" # Computed magnetic derivatives

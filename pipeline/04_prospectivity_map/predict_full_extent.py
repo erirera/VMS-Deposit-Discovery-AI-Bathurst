@@ -32,7 +32,7 @@ from config import (
     RF_MODEL_PATH, XGB_MODEL_PATH,
     RF_PROSPECTIVITY_TIFF, XGB_PROSPECTIVITY_TIFF,
     BMC_BBOX_WGS84, CRS_SOURCE, CRS_TARGET,
-    TARGET_RESOLUTION_M, NODATA_VALUE,
+    TARGET_RESOLUTION_M, NODATA_VALUE, MASTER_RASTER_PATH,
 )
 
 logging.basicConfig(
@@ -53,18 +53,22 @@ MODELS_TO_RUN = [
 
 
 def build_prediction_grid():
-    """Create a regular 100 m grid over the BMC extent in EPSG:2953."""
-    lon_min, lat_min, lon_max, lat_max = BMC_BBOX_WGS84
-    bbox_gdf = gpd.GeoDataFrame(
-        geometry=[box(lon_min, lat_min, lon_max, lat_max)],
-        crs=CRS_SOURCE
-    ).to_crs(CRS_TARGET)
-    minx, miny, maxx, maxy = bbox_gdf.total_bounds
+    """Create a prediction grid matching the master BMC raster exactly."""
+    if not MASTER_RASTER_PATH.exists():
+        raise FileNotFoundError(
+            f"Master raster not found: {MASTER_RASTER_PATH}. "
+            "Run pipeline/02_preprocessing/reproject_grids.py first."
+        )
 
-    xs = np.arange(minx, maxx, TARGET_RESOLUTION_M)
-    ys = np.arange(maxy, miny, -TARGET_RESOLUTION_M)
+    with rasterio.open(MASTER_RASTER_PATH) as master:
+        if master.crs != CRS_TARGET:
+            raise ValueError(f"Master raster CRS must be {CRS_TARGET}, got {master.crs}")
+        minx, miny, maxx, maxy = master.bounds
+        width, height = master.width, master.height
+
+    xs = minx + (np.arange(width) + 0.5) * TARGET_RESOLUTION_M
+    ys = maxy - (np.arange(height) + 0.5) * TARGET_RESOLUTION_M
     xx, yy = np.meshgrid(xs, ys)
-    height, width = xx.shape
 
     coords = np.column_stack([xx.ravel(), yy.ravel()])
     transform = from_bounds(minx, miny, maxx, maxy, width, height)
